@@ -1,0 +1,649 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Usuario {
+  id                          Int                           @id @default(autoincrement())
+  nome                        String                        @db.VarChar(100)
+  login                       String                        @unique @db.VarChar(50)
+  admin                       Boolean?
+  ativo                       Boolean?
+  senhaHash                   String?                       @map("senha_hash") @db.VarChar(255)
+  tentativasLoginFalhas       Int?                          @default(0) @map("tentativas_login_falhas")
+  bloqueadoAte                DateTime?                     @map("bloqueado_ate") @db.Timestamp(6)
+  ultimaTentativaLogin        DateTime?                     @map("ultima_tentativa_login") @db.Timestamp(6)
+  historicoEmpreitadas        HistoricoEmpreitada[]
+  historico_pedidos_materiais historico_pedidos_materiais[]
+  historico_retiradas         historico_retiradas[]
+  medicoesObra                MedicaoObra[]
+  produtos                    Produto[]
+  reajustes_contrato          reajustes_contrato[]
+
+  @@map("usuarios")
+}
+
+model Funcionario {
+  id          Int           @id @default(autoincrement())
+  nome        String        @db.VarChar(100)
+  telefone    String?       @db.VarChar(20)
+  cpf         String?       @db.VarChar(14)
+  rg          String?       @db.VarChar(20)
+  endereco    String?       @db.VarChar(200)
+  empreitadas Empreitada[]
+  emprestimos emprestimos[]
+  ferramentas Ferramenta[]
+  logs        logs[]
+  retiradas   Retirada[]
+
+  @@map("funcionarios")
+}
+
+model Condominio {
+  id              Int              @id @default(autoincrement())
+  nome            String           @db.VarChar(200)
+  cnpj            String           @unique @db.VarChar(18)
+  endereco        String
+  sindico         String           @db.VarChar(100)
+  telefone        String?          @db.VarChar(20)
+  email           String?          @db.VarChar(100)
+  ativo           Boolean?
+  dataCriacao     DateTime?        @map("data_criacao") @db.Timestamp(6)
+  dataAtualizacao DateTime?        @updatedAt @map("data_atualizacao") @db.Timestamp(6)
+  contas_receber  contas_receber[]
+  contratos       Contrato[]
+  empreitadas     Empreitada[]
+  ferramentas     Ferramenta[]
+
+  @@map("condominios")
+}
+
+model Empreitada {
+  id             Int                   @id @default(autoincrement())
+  nome           String                @db.VarChar(200)
+  valorTotal     Float                 @map("valor_total")
+  data           DateTime?             @db.Timestamp(6)
+  descricao      String?
+  funcionarioId  Int                   @map("funcionario_id")
+  concluida      Boolean?
+  dataConclusao  DateTime?             @map("data_conclusao") @db.Timestamp(6)
+  condominioId   Int                   @map("condominio_id")
+  contas_receber contas_receber[]
+  funcionario    Funcionario           @relation(fields: [funcionarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  condominio     Condominio            @relation(fields: [condominioId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_empreitadas_condominio")
+  historico      HistoricoEmpreitada[]
+  pedidos        PedidoMaterial[]
+  retiradas      Retirada[]
+
+  @@map("empreitadas")
+}
+
+model Retirada {
+  id                  Int                   @id @default(autoincrement())
+  valor               Float
+  data                DateTime              @db.Timestamp(6)
+  descricao           String?
+  empreitadaId        Int                   @map("empreitada_id")
+  funcionarioId       Int                   @map("funcionario_id")
+  historico_retiradas historico_retiradas[]
+  empreitada          Empreitada            @relation(fields: [empreitadaId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  funcionario         Funcionario           @relation(fields: [funcionarioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("retiradas")
+}
+
+model Contrato {
+  id                    Int                  @id @default(autoincrement())
+  condominioId          Int                  @map("condominio_id")
+  nomeServico           String               @map("nome_servico") @db.VarChar(200)
+  valorTotal            Float                @map("valor_total")
+  valorOriginal         Float                @map("valor_original")
+  dataInicio            DateTime             @map("data_inicio") @db.Timestamp(6)
+  dataFim               DateTime?            @map("data_fim") @db.Timestamp(6)
+  status                String?              @db.VarChar(20)
+  observacoes           String?
+  dataCadastro          DateTime?            @map("data_cadastro") @db.Timestamp(6)
+  dataUltimaAtualizacao DateTime?            @updatedAt @map("data_ultima_atualizacao") @db.Timestamp(6)
+  areaTotal             Float?               @map("area_total")
+  entradaObra           Float?               @default(0) @map("entrada_obra")
+  tipoPagamento         String?              @default("parcelas") @map("tipo_pagamento") @db.VarChar(20)
+  condominio            Condominio           @relation(fields: [condominioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contratos_calculos    contratos_calculos[]
+  medicoesObra          MedicaoObra[]
+  parcelas              Parcela[]
+  reajustes_contrato    reajustes_contrato[]
+
+  @@map("contratos")
+}
+
+model Parcela {
+  id                    Int                  @id @default(autoincrement())
+  contratoId            Int                  @map("contrato_id")
+  numeroParcela         Int                  @map("numero_parcela")
+  valorParcela          Float                @map("valor_parcela")
+  valorOriginal         Float                @map("valor_original")
+  dataVencimento        DateTime             @map("data_vencimento") @db.Timestamp(6)
+  intervaloDias         Int?                 @map("intervalo_dias")
+  status                String?              @db.VarChar(20)
+  dataPagamento         DateTime?            @map("data_pagamento") @db.Timestamp(6)
+  valorPago             Float?               @map("valor_pago")
+  observacoes           String?
+  dataCadastro          DateTime?            @map("data_cadastro") @db.Timestamp(6)
+  dataUltimaAtualizacao DateTime?            @updatedAt @map("data_ultima_atualizacao") @db.Timestamp(6)
+  contratos_calculos    contratos_calculos[]
+  contrato              Contrato             @relation(fields: [contratoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reajustes_contrato    reajustes_contrato[]
+
+  @@map("parcelas")
+}
+
+model MedicaoObra {
+  id                    Int       @id @default(autoincrement())
+  contratoId            Int       @map("contrato_id")
+  dataMedicao           DateTime  @map("data_medicao") @db.Timestamp(6)
+  areaExecutada         Float     @map("area_executada")
+  percentualExecutado   Float     @map("percentual_executado")
+  observacoes           String?
+  usuarioId             Int       @map("usuario_id")
+  dataCadastro          DateTime? @map("data_cadastro") @db.Timestamp(6)
+  dataUltimaAtualizacao DateTime? @updatedAt @map("data_ultima_atualizacao") @db.Timestamp(6)
+  valorMedicao          Float?    @map("valor_medicao")
+  dataPagamento         DateTime? @map("data_pagamento") @db.Timestamp(6)
+  valorPago             Float?    @map("valor_pago")
+  statusPagamento       String?   @default("pendente") @map("status_pagamento") @db.VarChar(20)
+  contrato              Contrato  @relation(fields: [contratoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario               Usuario   @relation(fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("medicoes_obra")
+}
+
+model Ferramenta {
+  id                  Int                   @id @default(autoincrement())
+  codigo              String                @unique @db.VarChar(50)
+  nome                String                @db.VarChar(200)
+  marca               String?               @db.VarChar(100)
+  descricao           String?
+  localizacaoAtual    String?               @map("localizacao_atual") @db.VarChar(50)
+  funcionarioAtual    String?               @map("funcionario_atual") @db.VarChar(100)
+  funcionarioAtualId  Int?                  @map("funcionario_atual_id")
+  obraAtual           String?               @map("obra_atual") @db.VarChar(200)
+  condominioId        Int?                  @map("condominio_id")
+  tipo                String?               @db.VarChar(100)
+  categoria           String?               @db.VarChar(100)
+  notificar_whatsapp  Boolean?              @default(true)
+  numeros_notificacao String?               @db.VarChar(500)
+  emprestimos         emprestimos[]
+  condominio          Condominio?           @relation(fields: [condominioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  funcionario         Funcionario?          @relation(fields: [funcionarioAtualId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  historico           HistoricoFerramenta[]
+
+  @@map("ferramentas")
+}
+
+model HistoricoFerramenta {
+  id           Int        @id @default(autoincrement())
+  ferramentaId Int        @map("ferramenta_id")
+  data         DateTime   @db.Timestamp(6)
+  tipo         String     @db.VarChar(50)
+  detalhes     String?
+  observacao   String?
+  ferramenta   Ferramenta @relation(fields: [ferramentaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("historico_ferramentas")
+}
+
+model Fornecedor {
+  id                 Int                  @id @default(autoincrement())
+  nome               String               @unique @db.VarChar(100)
+  cnpjCpf            String?              @map("cnpj_cpf") @db.VarChar(20)
+  telefone           String?              @db.VarChar(20)
+  email              String?              @db.VarChar(100)
+  endereco           String?              @db.VarChar(200)
+  cidade             String?              @db.VarChar(100)
+  estado             String?              @db.VarChar(2)
+  cep                String?              @db.VarChar(10)
+  observacoes        String?
+  ativo              Boolean?
+  dataCriacao        DateTime?            @map("data_criacao") @db.Timestamp(6)
+  dataAtualizacao    DateTime?            @updatedAt @map("data_atualizacao") @db.Timestamp(6)
+  contasPagar        ContaPagar[]
+  contas_recorrentes contas_recorrentes[]
+  pedidos            PedidoMaterial[]
+  produtos           Produto[]
+
+  @@map("fornecedores")
+}
+
+model Produto {
+  id                    Int                  @id @default(autoincrement())
+  codigo                String?              @unique @db.VarChar(50)
+  nome                  String               @db.VarChar(200)
+  descricao             String?
+  categoria             String?              @db.VarChar(100)
+  unidade               String?              @db.VarChar(20)
+  precoUnitario         Float?               @map("preco_unitario")
+  estoqueMinimo         Float?               @map("estoque_minimo")
+  estoqueAtual          Float?               @map("estoque_atual")
+  fornecedorPadraoId    Int?                 @map("fornecedor_padrao_id")
+  ativo                 Boolean?
+  dataCadastro          DateTime?            @map("data_cadastro") @db.Timestamp(6)
+  dataUltimaAtualizacao DateTime?            @updatedAt @map("data_ultima_atualizacao") @db.Timestamp(6)
+  usuario_cadastro_id   Int?
+  itensPedido           ItemPedidoMaterial[]
+  fornecedorPadrao      Fornecedor?          @relation(fields: [fornecedorPadraoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarios              Usuario?             @relation(fields: [usuario_cadastro_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("produtos")
+}
+
+model PedidoMaterial {
+  id                          Int                           @id @default(autoincrement())
+  empreitadaId                Int                           @map("empreitada_id")
+  numeroPedido                String                        @unique @map("numero_pedido") @db.VarChar(50)
+  dataPedido                  DateTime?                     @map("data_pedido") @db.Timestamp(6)
+  dataPrevistaEntrega         DateTime?                     @map("data_prevista_entrega") @db.Timestamp(6)
+  dataEntregaReal             DateTime?                     @map("data_entrega_real") @db.Timestamp(6)
+  status                      String?                       @db.VarChar(20)
+  observacoes                 String?
+  valorTotal                  Float?                        @map("valor_total")
+  responsavelPedido           String?                       @map("responsavel_pedido") @db.VarChar(100)
+  fornecedorId                Int?                          @map("fornecedor_id")
+  dataCadastro                DateTime?                     @map("data_cadastro") @db.Timestamp(6)
+  dataUltimaAtualizacao       DateTime?                     @updatedAt @map("data_ultima_atualizacao") @db.Timestamp(6)
+  historico_pedidos_materiais historico_pedidos_materiais[]
+  itens                       ItemPedidoMaterial[]
+  empreitada                  Empreitada                    @relation(fields: [empreitadaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fornecedor                  Fornecedor?                   @relation(fields: [fornecedorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("pedidos_materiais")
+}
+
+model ItemPedidoMaterial {
+  id                    Int            @id @default(autoincrement())
+  pedidoId              Int            @map("pedido_id")
+  descricao             String         @db.VarChar(200)
+  quantidade            Float
+  unidade               String?        @db.VarChar(20)
+  valorUnitario         Float          @map("valor_unitario")
+  valorTotal            Float          @map("valor_total")
+  observacoes           String?
+  quantidadeEntregue    Float?         @map("quantidade_entregue")
+  quantidadePendente    Float          @map("quantidade_pendente")
+  statusEntrega         String?        @map("status_entrega") @db.VarChar(20)
+  dataCadastro          DateTime?      @map("data_cadastro") @db.Timestamp(6)
+  dataUltimaAtualizacao DateTime?      @updatedAt @map("data_ultima_atualizacao") @db.Timestamp(6)
+  produtoId             Int?           @map("produto_id")
+  pedido                PedidoMaterial @relation(fields: [pedidoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  produto               Produto?       @relation(fields: [produtoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("itens_pedido_material")
+}
+
+model ContaPagar {
+  id                    Int                 @id @default(autoincrement())
+  descricao             String              @db.VarChar(200)
+  valor                 Float
+  dataVencimento        DateTime            @map("data_vencimento") @db.Date
+  dataPagamento         DateTime?           @map("data_pagamento") @db.Date
+  status                String?             @db.VarChar(20)
+  categoria             String?             @db.VarChar(50)
+  fornecedorId          Int?                @map("fornecedor_id")
+  observacoes           String?
+  notaFiscal            String?             @map("nota_fiscal") @db.VarChar(255)
+  metodoPagamento       String?             @map("metodo_pagamento") @db.VarChar(50)
+  contaBancaria         String?             @map("conta_bancaria") @db.VarChar(100)
+  observacoes_pagamento String?
+  dataCriacao           DateTime?           @map("data_criacao") @db.Timestamp(6)
+  dataAtualizacao       DateTime?           @updatedAt @map("data_atualizacao") @db.Timestamp(6)
+  boleto_id             Int?
+  conta_recorrente_id   Int?
+  numeroNota            String?             @map("numero_nota") @db.VarChar(50)
+  serie_nota            String?             @db.VarChar(10)
+  chaveNfe              String?             @map("chave_nfe") @db.VarChar(44)
+  data_emissao_nota     DateTime?           @db.Timestamp(6)
+  data_saida_nota       DateTime?           @db.Timestamp(6)
+  valor_produtos        Float?
+  valor_servicos        Float?
+  valor_frete           Float?
+  valor_desconto        Float?
+  valor_impostos        Float?
+  natureza_operacao     String?             @db.VarChar(100)
+  boletos               boletos?            @relation(fields: [boleto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  contas_recorrentes    contas_recorrentes? @relation(fields: [conta_recorrente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fornecedor            Fornecedor?         @relation(fields: [fornecedorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("contas_pagar")
+}
+
+model HistoricoEmpreitada {
+  id            Int        @id @default(autoincrement())
+  empreitadaId  Int        @map("empreitada_id")
+  usuarioId     Int?       @map("usuario_id")
+  campoAlterado String     @map("campo_alterado") @db.VarChar(100)
+  valorAnterior String?    @map("valor_anterior")
+  valorNovo     String?    @map("valor_novo")
+  motivo        String?
+  dataAlteracao DateTime   @map("data_alteracao") @db.Timestamp(6)
+  ipUsuario     String?    @map("ip_usuario") @db.VarChar(45)
+  empreitada    Empreitada @relation(fields: [empreitadaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario       Usuario?   @relation(fields: [usuarioId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("historico_empreitadas")
+}
+
+model alembic_version {
+  version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
+}
+
+model boletos {
+  id               Int              @id @default(autoincrement())
+  codigo_barras    String           @db.VarChar(44)
+  linha_digitavel  String           @db.VarChar(47)
+  data_emissao     DateTime         @db.Date
+  data_vencimento  DateTime         @db.Date
+  valor            Float
+  beneficiario     String           @db.VarChar(100)
+  nosso_numero     String?          @db.VarChar(20)
+  seu_numero       String?          @db.VarChar(20)
+  arquivo_boleto   String?          @db.VarChar(255)
+  data_criacao     DateTime?        @db.Timestamp(6)
+  data_atualizacao DateTime?        @db.Timestamp(6)
+  contas_pagar     ContaPagar[]
+  contas_receber   contas_receber[]
+}
+
+model categorias_produtos {
+  id            Int       @id @default(autoincrement())
+  nome          String    @unique @db.VarChar(100)
+  descricao     String?
+  ativo         Boolean?
+  data_cadastro DateTime? @db.Timestamp(6)
+}
+
+model configuracao_nfe_destinatario {
+  id                       Int       @id @default(autoincrement())
+  cnpj_destinatario        String    @unique @db.VarChar(14)
+  razao_social             String    @db.VarChar(100)
+  certificado_path         String    @db.VarChar(255)
+  certificado_senha        String    @db.VarChar(255)
+  certificado_validade     DateTime? @db.Timestamp(6)
+  ambiente                 String    @db.VarChar(1)
+  consulta_automatica      Boolean?
+  intervalo_consulta       Int?
+  manifestacao_automatica  Boolean?
+  tipo_manifestacao_padrao String?   @db.VarChar(6)
+  salvar_xml_disco         Boolean?
+  salvar_xml_banco         Boolean?
+  diretorio_xml            String?   @db.VarChar(255)
+  notificar_email          Boolean?
+  email_notificacao        String?   @db.VarChar(100)
+  ativo                    Boolean?
+  criado_em                DateTime? @db.Timestamp(6)
+  atualizado_em            DateTime? @db.Timestamp(6)
+}
+
+model configuracoes {
+  id         Int       @id @default(autoincrement())
+  chave      String    @unique @db.VarChar(100)
+  valor      String
+  descricao  String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model contas_bancarias {
+  id           Int       @id @default(autoincrement())
+  nome         String    @db.VarChar(100)
+  banco        String    @db.VarChar(50)
+  tipo         String    @db.VarChar(30)
+  agencia      String?   @db.VarChar(20)
+  conta        String?   @db.VarChar(20)
+  observacoes  String?
+  ativa        Boolean?
+  data_criacao DateTime? @db.Timestamp(6)
+}
+
+model contas_receber {
+  id               Int         @id @default(autoincrement())
+  descricao        String      @db.VarChar(200)
+  valor            Float
+  data_emissao     DateTime    @db.Date
+  data_vencimento  DateTime    @db.Date
+  data_pagamento   DateTime?   @db.Date
+  valor_pago       Float?
+  status           String?     @db.VarChar(20)
+  tipo             String?     @db.VarChar(50)
+  observacoes      String?
+  condominio_id    Int
+  empreitada_id    Int?
+  boleto_id        Int?
+  data_criacao     DateTime?   @db.Timestamp(6)
+  data_atualizacao DateTime?   @db.Timestamp(6)
+  boletos          boletos?    @relation(fields: [boleto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  condominios      Condominio  @relation(fields: [condominio_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  empreitadas      Empreitada? @relation(fields: [empreitada_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model contas_recorrentes {
+  id               Int          @id @default(autoincrement())
+  descricao        String       @db.VarChar(255)
+  valor            Float
+  dia_vencimento   Int
+  categoria        String?      @db.VarChar(100)
+  fornecedor_id    Int?
+  observacoes      String?
+  metodo_pagamento String?      @db.VarChar(100)
+  conta_bancaria   String?      @db.VarChar(100)
+  ativo            Boolean?
+  data_inicio      DateTime     @db.Date
+  data_fim         DateTime?    @db.Date
+  periodicidade    String?      @db.VarChar(20)
+  contas_pagar     ContaPagar[]
+  fornecedores     Fornecedor?  @relation(fields: [fornecedor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model contratos_calculos {
+  id                      Int       @id @default(autoincrement())
+  contrato_id             Int
+  percentual_iss          Float?
+  servicos_bruto          Float
+  produtos_bruto          Float
+  iss_retido              Float
+  servicos_liquido        Float
+  valor_boleto            Float
+  total_liquido           Float
+  data_calculo            DateTime? @db.Timestamp(6)
+  data_ultima_atualizacao DateTime? @db.Timestamp(6)
+  parcela_id              Int?
+  valor_servicos          Float?
+  valor_produtos          Float?
+  valor_parcela           Float     @default(0)
+  contratos               Contrato  @relation(fields: [contrato_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parcelas                Parcela?  @relation(fields: [parcela_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model controle_nsu {
+  id                Int       @id @default(autoincrement())
+  cnpj_destinatario String    @unique(map: "ix_controle_nsu_cnpj_destinatario") @db.VarChar(14)
+  ultimo_nsu        String    @db.VarChar(20)
+  max_nsu           String?   @db.VarChar(20)
+  ultima_consulta   DateTime? @db.Timestamp(6)
+  proxima_consulta  DateTime? @db.Timestamp(6)
+  tentativas_erro   Int?
+  ativo             Boolean?
+  observacoes       String?
+  criado_em         DateTime? @db.Timestamp(6)
+  atualizado_em     DateTime? @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model emprestimos {
+  id                      Int         @id @default(autoincrement())
+  ferramenta_id           Int
+  funcionario_id          Int
+  data_emprestimo         DateTime    @default(now()) @db.Timestamp(6)
+  data_devolucao_prevista DateTime    @db.Timestamp(6)
+  data_devolucao_real     DateTime?   @db.Timestamp(6)
+  observacoes             String?
+  status                  String?     @default("ativo") @db.VarChar(20)
+  created_at              DateTime?   @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?   @default(now()) @db.Timestamp(6)
+  ferramentas             Ferramenta  @relation(fields: [ferramenta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  funcionarios            Funcionario @relation(fields: [funcionario_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model historico_pedidos_materiais {
+  id                Int            @id @default(autoincrement())
+  pedido_id         Int
+  acao              String         @db.VarChar(50)
+  descricao         String?
+  data_acao         DateTime?      @db.Timestamp(6)
+  usuario_id        Int?
+  pedidos_materiais PedidoMaterial @relation(fields: [pedido_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarios          Usuario?       @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model historico_retiradas {
+  id             Int      @id @default(autoincrement())
+  retirada_id    Int
+  usuario_id     Int?
+  campo_alterado String   @db.VarChar(100)
+  valor_anterior String?
+  valor_novo     String?
+  motivo         String?
+  data_alteracao DateTime @db.Timestamp(6)
+  ip_usuario     String?  @db.VarChar(45)
+  retiradas      Retirada @relation(fields: [retirada_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarios       Usuario? @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model log_nfe_destinatario {
+  id                Int       @id @default(autoincrement())
+  cnpj_destinatario String    @db.VarChar(14)
+  tipo_operacao     String    @db.VarChar(50)
+  chave_nfe         String?   @db.VarChar(44)
+  nsu               String?   @db.VarChar(20)
+  protocolo         String?   @db.VarChar(20)
+  sucesso           Boolean?
+  codigo_retorno    String?   @db.VarChar(10)
+  mensagem          String?
+  tempo_execucao    Float?
+  xml_request       String?
+  xml_response      String?
+  criado_em         DateTime? @db.Timestamp(6)
+
+  @@index([chave_nfe], map: "ix_log_nfe_destinatario_chave_nfe")
+  @@index([cnpj_destinatario], map: "ix_log_nfe_destinatario_cnpj_destinatario")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model logs {
+  id           Int          @id @default(autoincrement())
+  nivel        String       @db.VarChar(20)
+  mensagem     String
+  contexto     String?      @db.VarChar(255)
+  timestamp    DateTime?    @default(now()) @db.Timestamp(6)
+  usuario_id   Int?
+  funcionarios Funcionario? @relation(fields: [usuario_id], references: [id], onUpdate: NoAction)
+}
+
+model manifestacao_destinatario {
+  id                  Int              @id @default(autoincrement())
+  nfe_destinatario_id Int
+  tipo_evento         String           @db.VarChar(6)
+  descricao_evento    String           @db.VarChar(100)
+  justificativa       String?
+  sequencia_evento    Int?
+  data_evento         DateTime         @db.Timestamp(6)
+  protocolo           String?          @db.VarChar(20)
+  data_protocolo      DateTime?        @db.Timestamp(6)
+  codigo_status       String?          @db.VarChar(3)
+  motivo_status       String?          @db.VarChar(255)
+  xml_evento          String?
+  xml_retorno         String?
+  criado_em           DateTime?        @db.Timestamp(6)
+  nfe_destinatario    nfe_destinatario @relation(fields: [nfe_destinatario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model nfe_destinatario {
+  id                          Int                         @id @default(autoincrement())
+  chave_nfe                   String                      @unique(map: "ix_nfe_destinatario_chave_nfe") @db.VarChar(44)
+  nsu                         String                      @db.VarChar(20)
+  numero_nfe                  String                      @db.VarChar(9)
+  serie                       String                      @db.VarChar(3)
+  modelo                      String                      @db.VarChar(2)
+  emitente_cnpj               String                      @db.VarChar(14)
+  emitente_razao_social       String                      @db.VarChar(100)
+  emitente_nome_fantasia      String?                     @db.VarChar(100)
+  emitente_inscricao_estadual String?                     @db.VarChar(20)
+  emitente_endereco           String?                     @db.VarChar(200)
+  emitente_cidade             String?                     @db.VarChar(60)
+  emitente_estado             String?                     @db.VarChar(2)
+  emitente_cep                String?                     @db.VarChar(8)
+  data_emissao                DateTime                    @db.Timestamp(6)
+  data_recebimento            DateTime                    @db.Timestamp(6)
+  natureza_operacao           String?                     @db.VarChar(60)
+  valor_total                 Float                       @db.Real
+  valor_produtos              Float?                      @db.Real
+  valor_servicos              Float?                      @db.Real
+  valor_icms                  Float?                      @db.Real
+  valor_pis                   Float?                      @db.Real
+  valor_cofins                Float?                      @db.Real
+  valor_ipi                   Float?                      @db.Real
+  valor_frete                 Float?                      @db.Real
+  valor_desconto              Float?                      @db.Real
+  situacao_nfe                String                      @db.VarChar(2)
+  descricao_situacao          String?                     @db.VarChar(100)
+  manifestacao_realizada      Boolean?
+  tipo_manifestacao           String?                     @db.VarChar(6)
+  data_manifestacao           DateTime?                   @db.Timestamp(6)
+  protocolo_manifestacao      String?                     @db.VarChar(20)
+  xml_resumo                  String?
+  xml_completo                String?
+  xml_path                    String?                     @db.VarChar(255)
+  schema_xml                  String?                     @db.VarChar(50)
+  digest_value                String?                     @db.VarChar(100)
+  criado_em                   DateTime?                   @db.Timestamp(6)
+  atualizado_em               DateTime?                   @db.Timestamp(6)
+  manifestacao_destinatario   manifestacao_destinatario[]
+
+  @@index([emitente_cnpj], map: "ix_nfe_destinatario_emitente_cnpj")
+  @@index([nsu], map: "ix_nfe_destinatario_nsu")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notificacoes {
+  id           Int       @id @default(autoincrement())
+  tipo         String    @db.VarChar(50)
+  destinatario String    @db.VarChar(255)
+  mensagem     String
+  status       String?   @default("pendente") @db.VarChar(20)
+  data_envio   DateTime? @db.Timestamp(6)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model reajustes_contrato {
+  id             Int       @id @default(autoincrement())
+  contrato_id    Int
+  parcela_id     Int?
+  tipo           String    @db.VarChar(20)
+  valor_anterior Float
+  valor_novo     Float
+  motivo         String
+  data_reajuste  DateTime? @db.Timestamp(6)
+  usuario_id     Int
+  contratos      Contrato  @relation(fields: [contrato_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parcelas       Parcela?  @relation(fields: [parcela_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarios       Usuario   @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model sessions {
+  id         Int       @id @default(autoincrement())
+  session_id String?   @unique @db.VarChar(255)
+  data       Bytes?
+  expiry     DateTime? @db.Timestamp(6)
+}

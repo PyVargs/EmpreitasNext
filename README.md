@@ -1,36 +1,166 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Empreitas 2.0
 
-## Getting Started
+Sistema de Gestão para Empresas de Obras e Reformas
 
-First, run the development server:
+## 🚀 Tecnologias
+
+- **Frontend**: Next.js 15, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: PostgreSQL (Render) + Prisma ORM
+- **Autenticação**: NextAuth.js com credenciais
+- **State Management**: TanStack Query, Zustand
+- **Forms**: React Hook Form + Zod
+- **Charts**: Recharts
+
+## 📋 Funcionalidades
+
+- **Funcionários**: Cadastro, histórico, saldos
+- **Empreitadas**: Gestão de obras/serviços
+- **Retiradas**: Adiantamentos e pagamentos
+- **Contratos**: Parcelas e medições de obra
+- **Ferramentas**: Inventário com QR Code, empréstimos
+- **Contas a Pagar**: Com importação de XML NFe
+- **Pedidos de Materiais**: Entregas parciais
+
+## 🛠️ Setup
+
+### Pré-requisitos
+
+- Node.js 18+
+- npm ou yarn
+- Banco PostgreSQL (Render)
+
+### Instalação
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Clonar repositório
+git clone <repo-url>
+cd empreitas-app
+
+# Instalar dependências
+npm install
+
+# Configurar variáveis de ambiente
+# Crie um arquivo .env com:
+DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="sua-chave-secreta-gere-com-openssl-rand-base64-32"
+ADMIN_ACTION_PASSWORD="sua-senha-para-acoes-criticas"
+
+# Gerar cliente Prisma
+npx prisma generate
+
+# Sincronizar schema (opcional - se o banco já existe)
+npx prisma db pull
+
+# Ou aplicar migrations
+npx prisma migrate dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Executar
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Desenvolvimento
+npm run dev
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+# Build
+npm run build
 
-## Learn More
+# Produção
+npm start
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 📁 Estrutura do Projeto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/                    # App Router (Next.js)
+│   ├── (auth)/            # Rotas de autenticação
+│   ├── (dashboard)/       # Rotas protegidas
+│   └── api/               # API Routes
+├── components/
+│   ├── layout/            # Sidebar, Header, etc
+│   ├── providers/         # Context providers
+│   └── ui/                # Componentes shadcn/ui
+├── hooks/                 # Custom hooks
+├── lib/                   # Utilitários
+│   ├── auth.ts           # Configuração NextAuth
+│   └── prisma.ts         # Cliente Prisma
+├── types/                 # TypeScript types
+└── prisma/
+    └── schema.prisma     # Schema do banco
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## 🔐 Autenticação
 
-## Deploy on Vercel
+O sistema usa NextAuth.js com:
+- Login por usuário/senha (campo `login` na tabela `usuarios`)
+- Hash de senha com bcrypt (campo `senha_hash`)
+- Proteção contra brute force (bloqueio após 5 tentativas)
+- Sessão JWT com duração de 24 horas
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📊 Dashboard
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Métricas em tempo real:
+- Valor total em empreitadas
+- Total retirado
+- Ferramentas por localização
+- Contratos ativos
+- Contas vencidas
+
+## 🗄️ Banco de Dados
+
+O sistema conecta ao PostgreSQL existente do Empreitas v1.0 no Render.
+
+**Tabelas principais:**
+- `usuarios` - Usuários do sistema
+- `funcionarios` - Funcionários/empreiteiros
+- `condominios` - Clientes
+- `empreitadas` - Obras/serviços
+- `retiradas` - Pagamentos
+- `contratos` - Contratos com parcelas
+- `ferramentas` - Inventário
+
+## 🎨 UI/UX
+
+- Tema escuro por padrão
+- Cores: Amber/Orange (primária)
+- Design responsivo
+- Animações suaves
+- Feedback visual (toasts, loading states)
+
+## 📝 Scripts
+
+```bash
+# Desenvolvimento
+npm run dev
+
+# Build produção
+npm run build
+
+# Lint
+npm run lint
+
+# Prisma Studio (visualizar banco)
+npx prisma studio
+
+# Gerar tipos Prisma
+npx prisma generate
+
+# Sincronizar schema do banco
+npx prisma db pull
+```
+
+## 🚀 Deploy no Render
+
+1. Crie um novo Web Service no Render
+2. Conecte ao repositório
+3. Configure as variáveis de ambiente:
+   - `DATABASE_URL`
+   - `NEXTAUTH_URL` (URL do seu app)
+   - `NEXTAUTH_SECRET`
+4. Build command: `npm install && npx prisma generate && npm run build`
+5. Start command: `npm start`
+
+## 📄 Licença
+
+Proprietary - © 2024-2026
