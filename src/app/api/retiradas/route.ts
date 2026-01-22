@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
     // Autenticação
     const { authorized, response, session } = await requireAuth()
-    if (!authorized) return response
+    if (!authorized) return response!
 
     let prisma
     try {
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
 
     // Autenticação
     const { authorized, response, session } = await requireAuth()
-    if (!authorized) return response
+    if (!authorized) return response!
 
     let prisma
     try {
