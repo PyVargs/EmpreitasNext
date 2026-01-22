@@ -105,7 +105,7 @@ export const statusColors = {
   ativo: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   pausado: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
   finalizado: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  // cancelado already defined
+  cancelado: 'bg-slate-500/10 text-slate-500 border-slate-500/20',
   
   // Pedido
   aprovado: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
