@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs'
 // PUT /api/admin/usuarios/[id] - Atualizar usuário
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -144,7 +144,7 @@ export async function PUT(
 // DELETE /api/admin/usuarios/[id] - Excluir usuário
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
