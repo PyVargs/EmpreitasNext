@@ -318,7 +318,7 @@ export default function DashboardPage() {
                         border: '1px solid #333',
                         borderRadius: '8px',
                       }}
-                      formatter={(value: number) => [formatCurrency(value), 'Valor']}
+                      formatter={(value) => [formatCurrency(Number(value) || 0), 'Valor']}
                     />
                     <Area
                       type="monotone"
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                       border: '1px solid #333',
                       borderRadius: '8px',
                     }}
-                    formatter={(value: number) => [formatCurrency(value), 'Saldo']}
+                    formatter={(value) => [formatCurrency(Number(value) || 0), 'Saldo']}
                   />
                   <Bar
                     dataKey="saldo"
