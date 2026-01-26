@@ -132,18 +132,9 @@ export async function GET() {
           valor_retirado: valorTotalRetiradas._sum.valor || 0,
           saldo: (valorTotalEmpreitadas._sum.valorTotal || 0) - (valorTotalRetiradas._sum.valor || 0),
         },
-        ultimas_atividades: ultimasAtividades.map((ativ: {
-          id: number
-          acao: string
-          campoAlterado: string | null
-          valorAnterior: string | null
-          valorNovo: string | null
-          dataAlteracao: Date
-          empreitada: { nome: string }
-          usuario: { nome: string } | null
-        }) => ({
+        ultimas_atividades: ultimasAtividades.map((ativ) => ({
           id: ativ.id,
-          acao: ativ.acao,
+          acao: ativ.campoAlterado,
           campo: ativ.campoAlterado,
           valor_anterior: ativ.valorAnterior,
           valor_novo: ativ.valorNovo,

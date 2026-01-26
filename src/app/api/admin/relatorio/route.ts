@@ -109,7 +109,7 @@ export async function GET() {
 
     const atividadesFormatadas = ultimasAtividades.map((ativ) => ({
       empreitada: ativ.empreitada?.nome || 'N/A',
-      acao: ativ.acao,
+      acao: ativ.campoAlterado,
       usuario: ativ.usuario?.nome || 'Sistema',
       data: ativ.dataAlteracao.toISOString(),
     }))

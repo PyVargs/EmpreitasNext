@@ -389,11 +389,11 @@ export function FerramentasPDF({ data }: FerramentasPDFProps) {
               {ferramentasEmprestadas.slice(0, 15).map((fer, index) => (
                 <View key={fer.id} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
                   <Text style={[styles.tableCellBold, { width: '12%' }]}>{fer.codigo}</Text>
-                  <Text style={[styles.tableCell, { width: '28%' }]} numberOfLines={1}>{fer.nome}</Text>
-                  <Text style={[styles.tableCell, { width: '25%' }]} numberOfLines={1}>
+                  <Text style={[styles.tableCell, { width: '28%' }]} >{fer.nome}</Text>
+                  <Text style={[styles.tableCell, { width: '25%' }]} >
                     {fer.funcionarioAtual || '-'}
                   </Text>
-                  <Text style={[styles.tableCell, { width: '35%' }]} numberOfLines={1}>
+                  <Text style={[styles.tableCell, { width: '35%' }]} >
                     {fer.obraAtual || '-'}
                   </Text>
                 </View>
@@ -436,9 +436,9 @@ export function FerramentasPDF({ data }: FerramentasPDFProps) {
             {ferramentasCD.slice(0, 30).map((fer, index) => (
               <View key={fer.id} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCellBold, { width: '10%' }]}>{fer.codigo}</Text>
-                <Text style={[styles.tableCell, { width: '30%' }]} numberOfLines={1}>{fer.nome}</Text>
+                <Text style={[styles.tableCell, { width: '30%' }]} >{fer.nome}</Text>
                 <Text style={[styles.tableCell, { width: '20%' }]}>{fer.categoria || '-'}</Text>
-                <Text style={[styles.tableCell, { width: '20%' }]} numberOfLines={1}>
+                <Text style={[styles.tableCell, { width: '20%' }]} >
                   {fer.marca ? `${fer.marca}${fer.modelo ? ` ${fer.modelo}` : ''}` : '-'}
                 </Text>
                 <Text style={[styles.tableCell, { width: '20%' }]}>{fer.estadoConservacao || '-'}</Text>
@@ -481,9 +481,9 @@ export function FerramentasPDF({ data }: FerramentasPDFProps) {
             {ferramentasManutencao.map((fer, index) => (
               <View key={fer.id} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCellBold, { width: '12%' }]}>{fer.codigo}</Text>
-                <Text style={[styles.tableCell, { width: '35%' }]} numberOfLines={1}>{fer.nome}</Text>
+                <Text style={[styles.tableCell, { width: '35%' }]} >{fer.nome}</Text>
                 <Text style={[styles.tableCell, { width: '20%' }]}>{fer.categoria || '-'}</Text>
-                <Text style={[styles.tableCell, { width: '33%' }]} numberOfLines={2}>
+                <Text style={[styles.tableCell, { width: '33%' }]} >
                   {fer.descricao || '-'}
                 </Text>
               </View>
@@ -521,12 +521,12 @@ export function FerramentasPDF({ data }: FerramentasPDFProps) {
             {ferramentas.map((fer, index) => (
               <View key={fer.id} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.tableCellBold, { width: '10%' }]}>{fer.codigo}</Text>
-                <Text style={[styles.tableCell, { width: '25%' }]} numberOfLines={1}>{fer.nome}</Text>
+                <Text style={[styles.tableCell, { width: '25%' }]} >{fer.nome}</Text>
                 <Text style={[styles.tableCell, { width: '15%' }]}>{fer.categoria || '-'}</Text>
                 <Text style={[styles.tableCell, { width: '15%' }]}>
                   {getLocalizacaoLabel(fer.localizacaoAtual)}
                 </Text>
-                <Text style={[styles.tableCell, { width: '20%' }]} numberOfLines={1}>
+                <Text style={[styles.tableCell, { width: '20%' }]} >
                   {fer.funcionarioAtual || '-'}
                 </Text>
                 <Text style={[styles.tableCell, { width: '15%' }]}>{fer.estadoConservacao || '-'}</Text>

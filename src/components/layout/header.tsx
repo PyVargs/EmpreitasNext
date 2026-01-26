@@ -20,10 +20,10 @@ interface HeaderProps {
 }
 
 export function Header({ title, description }: HeaderProps) {
-  const { profile, signOut } = useUser()
+  const { user, signOut } = useUser()
   const { theme, setTheme } = useTheme()
 
-  const initials = profile?.nome
+  const initials = user?.name
     ?.split(' ')
     .map((n) => n[0])
     .slice(0, 2)
@@ -70,7 +70,7 @@ export function Header({ title, description }: HeaderProps) {
               className="relative h-9 w-9 rounded-full"
             >
               <Avatar className="h-9 w-9">
-                <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.nome} />
+                <AvatarImage src={user?.image || undefined} alt={user?.name || undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-medium">
                   {initials}
                 </AvatarFallback>
@@ -81,10 +81,10 @@ export function Header({ title, description }: HeaderProps) {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {profile?.nome}
+                  {user?.name}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {profile?.email}
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>

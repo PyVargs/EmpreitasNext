@@ -95,7 +95,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.admin = (user as { admin?: boolean }).admin
+        token.admin = (user as { admin?: boolean }).admin ?? false
       }
       return token
     },

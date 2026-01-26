@@ -92,14 +92,13 @@ export async function PUT(
     }
 
     // Registrar no histórico
-    const registrarHistorico = async (tipo: string, descricao: string) => {
+    const registrarHistorico = async (tipo: string, detalhes: string) => {
       try {
         await prisma.historicoFerramenta.create({
           data: {
             ferramentaId: ferramentaId,
             tipo,
-            descricao,
-            funcionarioId: funcionarioId ? parseInt(funcionarioId) : ferramentaAtual.funcionarioAtualId,
+            detalhes,
             data: new Date(),
           },
         })

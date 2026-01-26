@@ -476,9 +476,9 @@ export function RelatorioSistemaPDF({ data }: RelatorioSistemaPDFProps) {
           </View>
           {empreitadasAtivas.slice(0, 20).map((emp, index) => (
             <View key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
-              <Text style={[styles.tableCellBold, { width: '25%' }]} numberOfLines={1}>{emp.nome}</Text>
-              <Text style={[styles.tableCell, { width: '20%' }]} numberOfLines={1}>{emp.condominio}</Text>
-              <Text style={[styles.tableCell, { width: '15%' }]} numberOfLines={1}>{emp.funcionario}</Text>
+              <Text style={[styles.tableCellBold, { width: '25%' }]} >{emp.nome}</Text>
+              <Text style={[styles.tableCell, { width: '20%' }]} >{emp.condominio}</Text>
+              <Text style={[styles.tableCell, { width: '15%' }]} >{emp.funcionario}</Text>
               <Text style={[styles.tableCell, { width: '13%', textAlign: 'right' }]}>{formatCurrency(emp.valor_total)}</Text>
               <Text style={[styles.tableCell, { width: '13%', textAlign: 'right', color: '#d97706' }]}>{formatCurrency(emp.valor_retirado)}</Text>
               <Text style={[styles.tableCell, { width: '14%', textAlign: 'right', color: emp.saldo >= 0 ? '#16a34a' : '#dc2626', fontWeight: 'bold' }]}>
@@ -521,10 +521,10 @@ export function RelatorioSistemaPDF({ data }: RelatorioSistemaPDFProps) {
             </View>
             {ferramentasEmprestadas.slice(0, 25).map((fer, index) => (
               <View key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
-                <Text style={[styles.tableCellBold, { width: '30%' }]} numberOfLines={1}>{fer.nome}</Text>
+                <Text style={[styles.tableCellBold, { width: '30%' }]} >{fer.nome}</Text>
                 <Text style={[styles.tableCell, { width: '15%' }]}>{fer.codigo}</Text>
-                <Text style={[styles.tableCell, { width: '25%' }]} numberOfLines={1}>{fer.funcionario}</Text>
-                <Text style={[styles.tableCell, { width: '30%' }]} numberOfLines={1}>{fer.obra || '-'}</Text>
+                <Text style={[styles.tableCell, { width: '25%' }]} >{fer.funcionario}</Text>
+                <Text style={[styles.tableCell, { width: '30%' }]} >{fer.obra || '-'}</Text>
               </View>
             ))}
           </View>
@@ -545,7 +545,7 @@ export function RelatorioSistemaPDF({ data }: RelatorioSistemaPDFProps) {
               </View>
               {ultimasAtividades.slice(0, 10).map((ativ, index) => (
                 <View key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
-                  <Text style={[styles.tableCellBold, { width: '30%' }]} numberOfLines={1}>{ativ.empreitada}</Text>
+                  <Text style={[styles.tableCellBold, { width: '30%' }]} >{ativ.empreitada}</Text>
                   <Text style={[styles.tableCell, { width: '25%' }]}>{ativ.acao}</Text>
                   <Text style={[styles.tableCell, { width: '20%' }]}>{ativ.usuario}</Text>
                   <Text style={[styles.tableCell, { width: '25%' }]}>{formatDateTime(ativ.data)}</Text>
@@ -584,7 +584,7 @@ export function RelatorioSistemaPDF({ data }: RelatorioSistemaPDFProps) {
             </View>
             {condominiosResumo.map((cond, index) => (
               <View key={index} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
-                <Text style={[styles.tableCellBold, { width: '40%' }]} numberOfLines={1}>{cond.nome}</Text>
+                <Text style={[styles.tableCellBold, { width: '40%' }]} >{cond.nome}</Text>
                 <Text style={[styles.tableCell, { width: '20%', textAlign: 'center' }]}>{cond.empreitadas_ativas}</Text>
                 <Text style={[styles.tableCell, { width: '20%', textAlign: 'right' }]}>{formatCurrency(cond.valor_total)}</Text>
                 <Text style={[styles.tableCell, { width: '20%', textAlign: 'right', color: cond.saldo >= 0 ? '#16a34a' : '#dc2626', fontWeight: 'bold' }]}>
