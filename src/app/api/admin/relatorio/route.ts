@@ -66,8 +66,14 @@ export async function GET() {
       orderBy: { valorTotal: 'desc' },
     })
 
-    const empreitadasAtivasFormatadas = empreitadasAtivasDetalhes.map((emp) => {
-      const valorRetirado = emp.retiradas.reduce((sum, r) => sum + r.valor, 0)
+    const empreitadasAtivasFormatadas = empreitadasAtivasDetalhes.map((emp: {
+      nome: string
+      valorTotal: number
+      condominio: { nome: string } | null
+      funcionario: { nome: string } | null
+      retiradas: { valor: number }[]
+    }) => {
+      const valorRetirado = emp.retiradas.reduce((sum: number, r: { valor: number }) => sum + r.valor, 0)
       return {
         nome: emp.nome,
         condominio: emp.condominio?.nome || 'N/A',
