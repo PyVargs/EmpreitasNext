@@ -304,11 +304,19 @@ export async function POST(req: Request) {
       },
     })
 
-    // Tentar criar os itens separadamente (tabela pode não existir ainda)
+    // Tentar criar os itens separadamente
     let itensImportados = 0
+    let erroItens = ''
+    
+    console.log(`[Importar XML] Itens encontrados no XML: ${nfeData.itens.length}`)
+    if (nfeData.itens.length > 0) {
+      console.log('[Importar XML] Primeiro item:', JSON.stringify(nfeData.itens[0]))
+    }
+    
     if (nfeData.itens.length > 0) {
       try {
         for (const item of nfeData.itens) {
+          console.log(`[Importar XML] Inserindo item: ${item.descricao}`)
           await prisma.$executeRaw`
             INSERT INTO itens_conta_pagar 
             (conta_pagar_id, numero_item, codigo_produto, descricao, ncm, cfop, unidade, quantidade, valor_unitario, valor_total, valor_desconto)
@@ -316,9 +324,11 @@ export async function POST(req: Request) {
             (${novaConta.id}, ${item.numeroItem}, ${item.codigoProduto || null}, ${item.descricao}, ${item.ncm || null}, ${item.cfop || null}, ${item.unidade || null}, ${item.quantidade}, ${item.valorUnitario}, ${item.valorTotal}, ${item.valorDesconto || 0})
           `
           itensImportados++
+          console.log(`[Importar XML] Item inserido com sucesso`)
         }
-      } catch (itemError) {
-        console.log('Não foi possível importar os itens (tabela pode não existir):', itemError)
+      } catch (itemError: any) {
+        erroItens = itemError?.message || 'Erro desconhecido'
+        console.error('[Importar XML] Erro ao inserir item:', itemError)
       }
     }
 
@@ -334,6 +344,8 @@ export async function POST(req: Request) {
         fornecedor: nfeData.fornecedor?.razaoSocial,
         dataVencimento: dataVencimento.toISOString(),
         totalItens: itensImportados,
+        itensEncontrados: nfeData.itens.length,
+        erroItens: erroItens || undefined,
       },
     })
   } catch (error) {

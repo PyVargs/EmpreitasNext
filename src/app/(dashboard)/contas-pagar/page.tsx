@@ -194,8 +194,21 @@ export default function ContasPagarPage() {
     setModalEditarOpen(true)
   }
 
-  const handleVerDetalhes = (conta: ContaPagar) => {
-    setContaSelecionada(conta)
+  const handleVerDetalhes = async (conta: ContaPagar) => {
+    // Buscar detalhes completos da conta (incluindo itens)
+    try {
+      const response = await fetch(`/api/contas-pagar/${conta.id}`)
+      const result = await response.json()
+      if (result.success && result.data) {
+        setContaSelecionada(result.data)
+      } else {
+        // Fallback para dados da listagem
+        setContaSelecionada(conta)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar detalhes:', error)
+      setContaSelecionada(conta)
+    }
     setModalDetalhesOpen(true)
   }
 
@@ -970,40 +983,40 @@ export default function ContasPagarPage() {
                   )}
 
                   {/* Valores Detalhados da Nota */}
-                  {(contaSelecionada.valor_produtos || contaSelecionada.valor_servicos || 
-                    contaSelecionada.valor_frete || contaSelecionada.valor_desconto || 
-                    contaSelecionada.valor_impostos) && (
+                  {(Number(contaSelecionada.valor_produtos) > 0 || Number(contaSelecionada.valor_servicos) > 0 || 
+                    Number(contaSelecionada.valor_frete) > 0 || Number(contaSelecionada.valor_desconto) > 0 || 
+                    Number(contaSelecionada.valor_impostos) > 0) && (
                     <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                       <Label className="text-muted-foreground text-xs font-semibold">Composição do Valor</Label>
                       <div className="space-y-1">
-                        {contaSelecionada.valor_produtos && contaSelecionada.valor_produtos > 0 && (
+                        {Number(contaSelecionada.valor_produtos) > 0 && (
                           <div className="flex justify-between text-sm">
                             <span>Produtos</span>
-                            <span>{formatCurrency(contaSelecionada.valor_produtos)}</span>
+                            <span>{formatCurrency(Number(contaSelecionada.valor_produtos))}</span>
                           </div>
                         )}
-                        {contaSelecionada.valor_servicos && contaSelecionada.valor_servicos > 0 && (
+                        {Number(contaSelecionada.valor_servicos) > 0 && (
                           <div className="flex justify-between text-sm">
                             <span>Serviços</span>
-                            <span>{formatCurrency(contaSelecionada.valor_servicos)}</span>
+                            <span>{formatCurrency(Number(contaSelecionada.valor_servicos))}</span>
                           </div>
                         )}
-                        {contaSelecionada.valor_frete && contaSelecionada.valor_frete > 0 && (
+                        {Number(contaSelecionada.valor_frete) > 0 && (
                           <div className="flex justify-between text-sm">
                             <span>Frete</span>
-                            <span>{formatCurrency(contaSelecionada.valor_frete)}</span>
+                            <span>{formatCurrency(Number(contaSelecionada.valor_frete))}</span>
                           </div>
                         )}
-                        {contaSelecionada.valor_impostos && contaSelecionada.valor_impostos > 0 && (
+                        {Number(contaSelecionada.valor_impostos) > 0 && (
                           <div className="flex justify-between text-sm">
                             <span>Impostos</span>
-                            <span>{formatCurrency(contaSelecionada.valor_impostos)}</span>
+                            <span>{formatCurrency(Number(contaSelecionada.valor_impostos))}</span>
                           </div>
                         )}
-                        {contaSelecionada.valor_desconto && contaSelecionada.valor_desconto > 0 && (
+                        {Number(contaSelecionada.valor_desconto) > 0 && (
                           <div className="flex justify-between text-sm text-red-500">
                             <span>Desconto</span>
-                            <span>- {formatCurrency(contaSelecionada.valor_desconto)}</span>
+                            <span>- {formatCurrency(Number(contaSelecionada.valor_desconto))}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">

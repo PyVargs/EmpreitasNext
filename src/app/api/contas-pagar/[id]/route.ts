@@ -49,9 +49,9 @@ export async function GET(
         WHERE conta_pagar_id = ${parseInt(id)}
         ORDER BY numero_item ASC
       `
-    } catch {
-      // Tabela de itens pode não existir ainda
-      console.log('Tabela itens_conta_pagar pode não existir ainda')
+      console.log(`[GET Conta ${id}] Itens encontrados: ${itens.length}`)
+    } catch (err) {
+      console.log('[GET Conta] Erro ao buscar itens:', err)
     }
 
     return NextResponse.json({
