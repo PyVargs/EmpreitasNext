@@ -73,41 +73,101 @@ function parseNFeXML(xmlContent: string): {
     const issqnTotXml = issqnTotMatch ? issqnTotMatch[1] : ''
     const valorServ = getTagValue(issqnTotXml, 'vServ')
 
-    // Extrair itens da nota fiscal
+    // Extrair itens da nota fiscal - múltiplos formatos de XML
     const itens: ItemNFe[] = []
-    const detMatches = xmlContent.matchAll(/<det\s+nItem="(\d+)"[^>]*>([\s\S]*?)<\/det>/gi)
     
-    for (const detMatch of detMatches) {
-      const numeroItem = parseInt(detMatch[1])
-      const detXml = detMatch[2]
-      
-      // Dados do produto
-      const prodMatch = detXml.match(/<prod>([\s\S]*?)<\/prod>/i)
-      const prodXml = prodMatch ? prodMatch[1] : ''
-      
-      const codigoProduto = getTagValue(prodXml, 'cProd')
-      const descricao = getTagValue(prodXml, 'xProd') || 'Produto sem descrição'
-      const ncm = getTagValue(prodXml, 'NCM')
-      const cfop = getTagValue(prodXml, 'CFOP')
-      const unidade = getTagValue(prodXml, 'uCom') || getTagValue(prodXml, 'uTrib')
-      const quantidade = parseFloat(getTagValue(prodXml, 'qCom') || getTagValue(prodXml, 'qTrib') || '1')
-      const valorUnitario = parseFloat(getTagValue(prodXml, 'vUnCom') || getTagValue(prodXml, 'vUnTrib') || '0')
-      const valorTotal = parseFloat(getTagValue(prodXml, 'vProd') || '0')
-      const valorDesconto = parseFloat(getTagValue(prodXml, 'vDesc') || '0')
-
-      itens.push({
-        numeroItem,
-        codigoProduto,
-        descricao,
-        ncm,
-        cfop,
-        unidade,
-        quantidade,
-        valorUnitario,
-        valorTotal,
-        valorDesconto: valorDesconto > 0 ? valorDesconto : undefined,
-      })
+    // Tentar diferentes padrões de regex para o elemento det
+    // Padrão 1: <det nItem="1"> (aspas duplas)
+    // Padrão 2: <det nItem='1'> (aspas simples)
+    // Padrão 3: Qualquer atributo com nItem
+    const detRegexPatterns = [
+      /<det\s+nItem\s*=\s*"(\d+)"[^>]*>([\s\S]*?)<\/det>/gi,
+      /<det\s+nItem\s*=\s*'(\d+)'[^>]*>([\s\S]*?)<\/det>/gi,
+      /<det[^>]*nItem\s*=\s*["']?(\d+)["']?[^>]*>([\s\S]*?)<\/det>/gi,
+    ]
+    
+    let detMatches: RegExpMatchArray[] = []
+    for (const pattern of detRegexPatterns) {
+      const matches = [...xmlContent.matchAll(pattern)]
+      if (matches.length > 0) {
+        detMatches = matches
+        break
+      }
     }
+    
+    // Se ainda não encontrou, tentar buscar todos os <det> e extrair nItem depois
+    if (detMatches.length === 0) {
+      const allDetMatches = xmlContent.matchAll(/<det[^>]*>([\s\S]*?)<\/det>/gi)
+      let itemNum = 0
+      for (const match of allDetMatches) {
+        itemNum++
+        const detXml = match[1]
+        const nItemMatch = match[0].match(/nItem\s*=\s*["']?(\d+)["']?/i)
+        const numeroItem = nItemMatch ? parseInt(nItemMatch[1]) : itemNum
+        
+        const prodMatch = detXml.match(/<prod>([\s\S]*?)<\/prod>/i)
+        const prodXml = prodMatch ? prodMatch[1] : ''
+        
+        if (prodXml) {
+          const codigoProduto = getTagValue(prodXml, 'cProd')
+          const descricao = getTagValue(prodXml, 'xProd') || 'Produto sem descrição'
+          const ncm = getTagValue(prodXml, 'NCM')
+          const cfop = getTagValue(prodXml, 'CFOP')
+          const unidade = getTagValue(prodXml, 'uCom') || getTagValue(prodXml, 'uTrib')
+          const quantidade = parseFloat(getTagValue(prodXml, 'qCom') || getTagValue(prodXml, 'qTrib') || '1')
+          const valorUnitario = parseFloat(getTagValue(prodXml, 'vUnCom') || getTagValue(prodXml, 'vUnTrib') || '0')
+          const valorTotal = parseFloat(getTagValue(prodXml, 'vProd') || '0')
+          const valorDesconto = parseFloat(getTagValue(prodXml, 'vDesc') || '0')
+          
+          itens.push({
+            numeroItem,
+            codigoProduto,
+            descricao,
+            ncm,
+            cfop,
+            unidade,
+            quantidade,
+            valorUnitario,
+            valorTotal,
+            valorDesconto: valorDesconto > 0 ? valorDesconto : undefined,
+          })
+        }
+      }
+    } else {
+      for (const detMatch of detMatches) {
+        const numeroItem = parseInt(detMatch[1])
+        const detXml = detMatch[2]
+        
+        // Dados do produto
+        const prodMatch = detXml.match(/<prod>([\s\S]*?)<\/prod>/i)
+        const prodXml = prodMatch ? prodMatch[1] : ''
+        
+        const codigoProduto = getTagValue(prodXml, 'cProd')
+        const descricao = getTagValue(prodXml, 'xProd') || 'Produto sem descrição'
+        const ncm = getTagValue(prodXml, 'NCM')
+        const cfop = getTagValue(prodXml, 'CFOP')
+        const unidade = getTagValue(prodXml, 'uCom') || getTagValue(prodXml, 'uTrib')
+        const quantidade = parseFloat(getTagValue(prodXml, 'qCom') || getTagValue(prodXml, 'qTrib') || '1')
+        const valorUnitario = parseFloat(getTagValue(prodXml, 'vUnCom') || getTagValue(prodXml, 'vUnTrib') || '0')
+        const valorTotal = parseFloat(getTagValue(prodXml, 'vProd') || '0')
+        const valorDesconto = parseFloat(getTagValue(prodXml, 'vDesc') || '0')
+
+        itens.push({
+          numeroItem,
+          codigoProduto,
+          descricao,
+          ncm,
+          cfop,
+          unidade,
+          quantidade,
+          valorUnitario,
+          valorTotal,
+          valorDesconto: valorDesconto > 0 ? valorDesconto : undefined,
+        })
+      }
+    }
+    
+    console.log(`[XML Parser] Encontrados ${itens.length} itens na nota`)
 
     return {
       chaveNfe: chaveNfe?.replace(/[^0-9]/g, ''),
