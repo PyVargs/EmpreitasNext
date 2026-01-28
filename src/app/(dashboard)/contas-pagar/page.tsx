@@ -873,7 +873,7 @@ export default function ContasPagarPage() {
 
       {/* Modal Detalhes */}
       <Dialog open={modalDetalhesOpen} onOpenChange={setModalDetalhesOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
@@ -881,70 +881,186 @@ export default function ContasPagarPage() {
             </DialogTitle>
           </DialogHeader>
           {contaSelecionada && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Descrição</Label>
-                  <p className="font-medium">{contaSelecionada.descricao}</p>
+            <div className="space-y-6 py-4">
+              {/* Informações Básicas */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-sm border-b pb-2">Informações Básicas</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Descrição</Label>
+                    <p className="font-medium">{contaSelecionada.descricao}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Valor Total</Label>
+                    <p className="font-semibold text-lg text-amber-600">{formatCurrency(contaSelecionada.valor)}</p>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Valor</Label>
-                  <p className="font-semibold text-lg">{formatCurrency(contaSelecionada.valor)}</p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Vencimento</Label>
+                    <p>{formatDate(contaSelecionada.data_vencimento)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground text-xs">Status</Label>
+                    <Badge variant="secondary" className={statusColors[contaSelecionada.status]}>
+                      {contaSelecionada.status}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {contaSelecionada.fornecedor && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Fornecedor</Label>
+                      <p>{contaSelecionada.fornecedor.nome}</p>
+                    </div>
+                  )}
+                  {contaSelecionada.categoria && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Categoria</Label>
+                      <p>{contaSelecionada.categoria}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs">Vencimento</Label>
-                  <p>{formatDate(contaSelecionada.data_vencimento)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs">Status</Label>
-                  <Badge variant="secondary" className={statusColors[contaSelecionada.status]}>
-                    {contaSelecionada.status}
-                  </Badge>
-                </div>
-              </div>
+              {/* Dados da Nota Fiscal */}
+              {(contaSelecionada.numero_nota || contaSelecionada.chave_nfe || contaSelecionada.valor_produtos) && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm border-b pb-2 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Dados da Nota Fiscal
+                  </h4>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    {contaSelecionada.numero_nota && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Número</Label>
+                        <p className="font-medium">{contaSelecionada.numero_nota}</p>
+                      </div>
+                    )}
+                    {contaSelecionada.serie_nota && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Série</Label>
+                        <p>{contaSelecionada.serie_nota}</p>
+                      </div>
+                    )}
+                    {contaSelecionada.data_emissao_nota && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Data Emissão</Label>
+                        <p>{formatDate(contaSelecionada.data_emissao_nota)}</p>
+                      </div>
+                    )}
+                  </div>
 
-              {contaSelecionada.fornecedor && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Fornecedor</Label>
-                  <p>{contaSelecionada.fornecedor.nome}</p>
+                  {contaSelecionada.natureza_operacao && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Natureza da Operação</Label>
+                      <p>{contaSelecionada.natureza_operacao}</p>
+                    </div>
+                  )}
+
+                  {contaSelecionada.chave_nfe && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Chave NF-e</Label>
+                      <p className="text-xs font-mono break-all bg-muted p-2 rounded">{contaSelecionada.chave_nfe}</p>
+                    </div>
+                  )}
+
+                  {/* Valores Detalhados da Nota */}
+                  {(contaSelecionada.valor_produtos || contaSelecionada.valor_servicos || 
+                    contaSelecionada.valor_frete || contaSelecionada.valor_desconto || 
+                    contaSelecionada.valor_impostos) && (
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                      <Label className="text-muted-foreground text-xs font-semibold">Composição do Valor</Label>
+                      <div className="space-y-1">
+                        {contaSelecionada.valor_produtos && contaSelecionada.valor_produtos > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Produtos</span>
+                            <span>{formatCurrency(contaSelecionada.valor_produtos)}</span>
+                          </div>
+                        )}
+                        {contaSelecionada.valor_servicos && contaSelecionada.valor_servicos > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Serviços</span>
+                            <span>{formatCurrency(contaSelecionada.valor_servicos)}</span>
+                          </div>
+                        )}
+                        {contaSelecionada.valor_frete && contaSelecionada.valor_frete > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Frete</span>
+                            <span>{formatCurrency(contaSelecionada.valor_frete)}</span>
+                          </div>
+                        )}
+                        {contaSelecionada.valor_impostos && contaSelecionada.valor_impostos > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Impostos</span>
+                            <span>{formatCurrency(contaSelecionada.valor_impostos)}</span>
+                          </div>
+                        )}
+                        {contaSelecionada.valor_desconto && contaSelecionada.valor_desconto > 0 && (
+                          <div className="flex justify-between text-sm text-red-500">
+                            <span>Desconto</span>
+                            <span>- {formatCurrency(contaSelecionada.valor_desconto)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2">
+                          <span>Total</span>
+                          <span className="text-amber-600">{formatCurrency(contaSelecionada.valor)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {contaSelecionada.categoria && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Categoria</Label>
-                  <p>{contaSelecionada.categoria}</p>
+              {/* Pagamento */}
+              {(contaSelecionada.metodo_pagamento || contaSelecionada.conta_bancaria || contaSelecionada.data_pagamento) && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm border-b pb-2 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Informações de Pagamento
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {contaSelecionada.metodo_pagamento && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Método de Pagamento</Label>
+                        <p>{contaSelecionada.metodo_pagamento}</p>
+                      </div>
+                    )}
+                    {contaSelecionada.conta_bancaria && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Conta Bancária</Label>
+                        <p>{contaSelecionada.conta_bancaria}</p>
+                      </div>
+                    )}
+                    {contaSelecionada.data_pagamento && (
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Data do Pagamento</Label>
+                        <p className="text-emerald-600 font-medium">{formatDate(contaSelecionada.data_pagamento)}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {contaSelecionada.numero_nota && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Número da Nota</Label>
-                  <p>{contaSelecionada.numero_nota}</p>
-                </div>
-              )}
-
-              {contaSelecionada.metodo_pagamento && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Método de Pagamento</Label>
-                  <p>{contaSelecionada.metodo_pagamento}</p>
-                </div>
-              )}
-
-              {contaSelecionada.data_pagamento && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Data do Pagamento</Label>
-                  <p>{formatDate(contaSelecionada.data_pagamento)}</p>
-                </div>
-              )}
-
-              {contaSelecionada.observacoes && (
-                <div>
-                  <Label className="text-muted-foreground text-xs">Observações</Label>
-                  <p className="text-sm">{contaSelecionada.observacoes}</p>
+              {/* Observações */}
+              {(contaSelecionada.observacoes || contaSelecionada.observacoes_pagamento) && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm border-b pb-2">Observações</h4>
+                  {contaSelecionada.observacoes && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Observações Gerais</Label>
+                      <p className="text-sm bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">{contaSelecionada.observacoes}</p>
+                    </div>
+                  )}
+                  {contaSelecionada.observacoes_pagamento && (
+                    <div>
+                      <Label className="text-muted-foreground text-xs">Observações do Pagamento</Label>
+                      <p className="text-sm bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">{contaSelecionada.observacoes_pagamento}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

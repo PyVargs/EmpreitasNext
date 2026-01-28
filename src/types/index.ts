@@ -304,12 +304,14 @@ export interface ContaPagar {
   categoria?: string | null;
   fornecedor_id?: string | null;
   observacoes?: string | null;
+  observacoes_pagamento?: string | null;
   nota_fiscal_url?: string | null;
   metodo_pagamento?: string | null;
   conta_bancaria?: string | null;
   numero_nota?: string | null;
   serie_nota?: string | null;
   chave_nfe?: string | null;
+  data_emissao_nota?: string | null;
   natureza_operacao?: string | null;
   valor_produtos?: number | null;
   valor_servicos?: number | null;
