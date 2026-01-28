@@ -294,6 +294,20 @@ export interface ItemPedidoMaterial {
   produto?: Produto;
 }
 
+export interface ItemContaPagar {
+  id: string;
+  numero_item?: number | null;
+  codigo_produto?: string | null;
+  descricao: string;
+  ncm?: string | null;
+  cfop?: string | null;
+  unidade?: string | null;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+  valor_desconto?: number | null;
+}
+
 export interface ContaPagar {
   id: string;
   descricao: string;
@@ -322,6 +336,7 @@ export interface ContaPagar {
   updated_at?: string;
   // Relations
   fornecedor?: Fornecedor;
+  itens?: ItemContaPagar[];
 }
 
 export interface HistoricoEmpreitada {

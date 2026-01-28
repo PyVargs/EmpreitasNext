@@ -314,8 +314,29 @@ model ContaPagar {
   boletos               boletos?            @relation(fields: [boleto_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   contas_recorrentes    contas_recorrentes? @relation(fields: [conta_recorrente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   fornecedor            Fornecedor?         @relation(fields: [fornecedorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  itens                 ItemContaPagar[]
 
   @@map("contas_pagar")
+}
+
+model ItemContaPagar {
+  id             Int        @id @default(autoincrement())
+  contaPagarId   Int        @map("conta_pagar_id")
+  numeroItem     Int?       @map("numero_item")
+  codigoProduto  String?    @map("codigo_produto") @db.VarChar(60)
+  descricao      String     @db.VarChar(500)
+  ncm            String?    @db.VarChar(8)
+  cfop           String?    @db.VarChar(4)
+  unidade        String?    @db.VarChar(6)
+  quantidade     Float      @default(1)
+  valorUnitario  Float      @default(0) @map("valor_unitario")
+  valorTotal     Float      @default(0) @map("valor_total")
+  valorDesconto  Float?     @default(0) @map("valor_desconto")
+  dataCriacao    DateTime?  @default(now()) @map("data_criacao") @db.Timestamp(6)
+  contaPagar     ContaPagar @relation(fields: [contaPagarId], references: [id], onDelete: Cascade)
+
+  @@index([contaPagarId])
+  @@map("itens_conta_pagar")
 }
 
 model HistoricoEmpreitada {

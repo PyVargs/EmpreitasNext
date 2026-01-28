@@ -64,8 +64,9 @@ import {
   DollarSign,
   FileText,
   Receipt,
+  Package,
 } from 'lucide-react'
-import type { ContaPagar, StatusConta, Fornecedor } from '@/types'
+import type { ContaPagar, StatusConta, Fornecedor, ItemContaPagar } from '@/types'
 
 const categorias = [
   'Material de Construção',
@@ -1012,6 +1013,57 @@ export default function ContasPagarPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Itens da Nota Fiscal */}
+              {contaSelecionada.itens && contaSelecionada.itens.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm border-b pb-2 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Itens da Nota Fiscal ({contaSelecionada.itens.length} {contaSelecionada.itens.length === 1 ? 'item' : 'itens'})
+                  </h4>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr>
+                          <th className="text-left p-2 font-medium">#</th>
+                          <th className="text-left p-2 font-medium">Descrição</th>
+                          <th className="text-right p-2 font-medium">Qtd</th>
+                          <th className="text-right p-2 font-medium">Unit.</th>
+                          <th className="text-right p-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contaSelecionada.itens.map((item, index) => (
+                          <tr key={item.id || index} className="border-b border-muted/30 hover:bg-muted/20">
+                            <td className="p-2 text-muted-foreground">{item.numero_item || index + 1}</td>
+                            <td className="p-2">
+                              <div>
+                                <p className="font-medium text-xs">{item.descricao}</p>
+                                {item.codigo_produto && (
+                                  <p className="text-xs text-muted-foreground">Cód: {item.codigo_produto}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 text-right whitespace-nowrap">
+                              {item.quantidade} {item.unidade || 'UN'}
+                            </td>
+                            <td className="p-2 text-right whitespace-nowrap">{formatCurrency(item.valor_unitario)}</td>
+                            <td className="p-2 text-right whitespace-nowrap font-medium">{formatCurrency(item.valor_total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-muted/30">
+                        <tr>
+                          <td colSpan={4} className="p-2 text-right font-semibold">Total dos Itens:</td>
+                          <td className="p-2 text-right font-semibold text-amber-600">
+                            {formatCurrency(contaSelecionada.itens.reduce((sum, item) => sum + item.valor_total, 0))}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               )}
 

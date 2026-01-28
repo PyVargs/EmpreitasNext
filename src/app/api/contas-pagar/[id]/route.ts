@@ -23,7 +23,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Banco não configurado' })
     }
 
-    const conta = await prisma.contaPagar.findUnique({
+    // Buscar conta com fornecedor e itens (itens podem não existir se tabela não foi criada)
+    let conta: any = await prisma.contaPagar.findUnique({
       where: { id: parseInt(id) },
       include: {
         fornecedor: {
@@ -34,6 +35,23 @@ export async function GET(
 
     if (!conta) {
       return NextResponse.json({ success: false, error: 'Conta não encontrada' }, { status: 404 })
+    }
+
+    // Tentar buscar itens separadamente (tabela pode não existir ainda)
+    let itens: any[] = []
+    try {
+      itens = await prisma.$queryRaw`
+        SELECT id, numero_item as "numeroItem", codigo_produto as "codigoProduto", 
+               descricao, ncm, cfop, unidade, quantidade, 
+               valor_unitario as "valorUnitario", valor_total as "valorTotal", 
+               valor_desconto as "valorDesconto"
+        FROM itens_conta_pagar 
+        WHERE conta_pagar_id = ${parseInt(id)}
+        ORDER BY numero_item ASC
+      `
+    } catch {
+      // Tabela de itens pode não existir ainda
+      console.log('Tabela itens_conta_pagar pode não existir ainda')
     }
 
     return NextResponse.json({
@@ -66,6 +84,31 @@ export async function GET(
           id: conta.fornecedor.id.toString(),
           nome: conta.fornecedor.nome,
         } : null,
+        itens: itens.map((item: {
+          id: number
+          numeroItem: number | null
+          codigoProduto: string | null
+          descricao: string
+          ncm: string | null
+          cfop: string | null
+          unidade: string | null
+          quantidade: number
+          valorUnitario: number
+          valorTotal: number
+          valorDesconto: number | null
+        }) => ({
+          id: item.id.toString(),
+          numero_item: item.numeroItem,
+          codigo_produto: item.codigoProduto,
+          descricao: item.descricao,
+          ncm: item.ncm,
+          cfop: item.cfop,
+          unidade: item.unidade,
+          quantidade: item.quantidade,
+          valor_unitario: item.valorUnitario,
+          valor_total: item.valorTotal,
+          valor_desconto: item.valorDesconto,
+        })),
       },
     })
   } catch (error) {

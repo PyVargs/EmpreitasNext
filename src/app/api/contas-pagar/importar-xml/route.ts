@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+// Interface para item da nota
+interface ItemNFe {
+  numeroItem: number
+  codigoProduto?: string
+  descricao: string
+  ncm?: string
+  cfop?: string
+  unidade?: string
+  quantidade: number
+  valorUnitario: number
+  valorTotal: number
+  valorDesconto?: number
+}
+
 // Função para extrair dados do XML de NF-e
 function parseNFeXML(xmlContent: string): {
   chaveNfe?: string
@@ -19,6 +33,7 @@ function parseNFeXML(xmlContent: string): {
   valorFrete?: number
   valorDesconto?: number
   naturezaOperacao?: string
+  itens: ItemNFe[]
 } | null {
   try {
     // Parse simples de XML usando regex (para evitar dependências externas)
@@ -29,7 +44,7 @@ function parseNFeXML(xmlContent: string): {
     }
 
     // Buscar informações da NF-e
-    const chaveNfe = getTagValue(xmlContent, 'chNFe') || getTagValue(xmlContent, 'infNFe')?.match(/Id="NFe(\d{44})"/)?.[1]
+    const chaveNfe = getTagValue(xmlContent, 'chNFe') || xmlContent.match(/Id="NFe(\d{44})"/)?.[1]
     const numeroNota = getTagValue(xmlContent, 'nNF')
     const serieNota = getTagValue(xmlContent, 'serie')
     const dataEmissaoStr = getTagValue(xmlContent, 'dhEmi') || getTagValue(xmlContent, 'dEmi')
@@ -42,7 +57,7 @@ function parseNFeXML(xmlContent: string): {
     const razaoSocial = getTagValue(emitXml, 'xNome')
     const nomeFantasia = getTagValue(emitXml, 'xFant')
 
-    // Valores
+    // Valores totais
     const totalMatch = xmlContent.match(/<total>([\s\S]*?)<\/total>/i)
     const totalXml = totalMatch ? totalMatch[1] : ''
     const icmsTotMatch = totalXml.match(/<ICMSTot>([\s\S]*?)<\/ICMSTot>/i)
@@ -57,6 +72,42 @@ function parseNFeXML(xmlContent: string): {
     const issqnTotMatch = totalXml.match(/<ISSQNtot>([\s\S]*?)<\/ISSQNtot>/i)
     const issqnTotXml = issqnTotMatch ? issqnTotMatch[1] : ''
     const valorServ = getTagValue(issqnTotXml, 'vServ')
+
+    // Extrair itens da nota fiscal
+    const itens: ItemNFe[] = []
+    const detMatches = xmlContent.matchAll(/<det\s+nItem="(\d+)"[^>]*>([\s\S]*?)<\/det>/gi)
+    
+    for (const detMatch of detMatches) {
+      const numeroItem = parseInt(detMatch[1])
+      const detXml = detMatch[2]
+      
+      // Dados do produto
+      const prodMatch = detXml.match(/<prod>([\s\S]*?)<\/prod>/i)
+      const prodXml = prodMatch ? prodMatch[1] : ''
+      
+      const codigoProduto = getTagValue(prodXml, 'cProd')
+      const descricao = getTagValue(prodXml, 'xProd') || 'Produto sem descrição'
+      const ncm = getTagValue(prodXml, 'NCM')
+      const cfop = getTagValue(prodXml, 'CFOP')
+      const unidade = getTagValue(prodXml, 'uCom') || getTagValue(prodXml, 'uTrib')
+      const quantidade = parseFloat(getTagValue(prodXml, 'qCom') || getTagValue(prodXml, 'qTrib') || '1')
+      const valorUnitario = parseFloat(getTagValue(prodXml, 'vUnCom') || getTagValue(prodXml, 'vUnTrib') || '0')
+      const valorTotal = parseFloat(getTagValue(prodXml, 'vProd') || '0')
+      const valorDesconto = parseFloat(getTagValue(prodXml, 'vDesc') || '0')
+
+      itens.push({
+        numeroItem,
+        codigoProduto,
+        descricao,
+        ncm,
+        cfop,
+        unidade,
+        quantidade,
+        valorUnitario,
+        valorTotal,
+        valorDesconto: valorDesconto > 0 ? valorDesconto : undefined,
+      })
+    }
 
     return {
       chaveNfe: chaveNfe?.replace(/[^0-9]/g, ''),
@@ -74,6 +125,7 @@ function parseNFeXML(xmlContent: string): {
       valorFrete: valorFrete ? parseFloat(valorFrete) : undefined,
       valorDesconto: valorDesc ? parseFloat(valorDesc) : undefined,
       naturezaOperacao,
+      itens,
     }
   } catch (error) {
     console.error('Erro ao parsear XML:', error)
@@ -192,15 +244,36 @@ export async function POST(req: Request) {
       },
     })
 
+    // Tentar criar os itens separadamente (tabela pode não existir ainda)
+    let itensImportados = 0
+    if (nfeData.itens.length > 0) {
+      try {
+        for (const item of nfeData.itens) {
+          await prisma.$executeRaw`
+            INSERT INTO itens_conta_pagar 
+            (conta_pagar_id, numero_item, codigo_produto, descricao, ncm, cfop, unidade, quantidade, valor_unitario, valor_total, valor_desconto)
+            VALUES 
+            (${novaConta.id}, ${item.numeroItem}, ${item.codigoProduto || null}, ${item.descricao}, ${item.ncm || null}, ${item.cfop || null}, ${item.unidade || null}, ${item.quantidade}, ${item.valorUnitario}, ${item.valorTotal}, ${item.valorDesconto || 0})
+          `
+          itensImportados++
+        }
+      } catch (itemError) {
+        console.log('Não foi possível importar os itens (tabela pode não existir):', itemError)
+      }
+    }
+
+    const mensagemItens = itensImportados > 0 ? ` (${itensImportados} itens)` : ''
+    
     return NextResponse.json({
       success: true,
-      message: `Nota Fiscal ${nfeData.numeroNota || ''} importada com sucesso!`,
+      message: `Nota Fiscal ${nfeData.numeroNota || ''} importada com sucesso!${mensagemItens}`,
       data: {
         id: novaConta.id.toString(),
         descricao,
         valor: nfeData.valor,
         fornecedor: nfeData.fornecedor?.razaoSocial,
         dataVencimento: dataVencimento.toISOString(),
+        totalItens: itensImportados,
       },
     })
   } catch (error) {
