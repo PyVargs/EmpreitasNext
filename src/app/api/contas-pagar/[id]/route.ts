@@ -1,0 +1,174 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+// GET /api/contas-pagar/[id] - Buscar conta específica
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    let prisma
+    try {
+      const prismaModule = await import('@/lib/prisma')
+      prisma = prismaModule.default
+    } catch {
+      return NextResponse.json({ success: false, error: 'Banco não configurado' })
+    }
+
+    const conta = await prisma.contaPagar.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        fornecedor: {
+          select: { id: true, nome: true },
+        },
+      },
+    })
+
+    if (!conta) {
+      return NextResponse.json({ success: false, error: 'Conta não encontrada' }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: conta.id.toString(),
+        descricao: conta.descricao,
+        valor: conta.valor,
+        data_vencimento: conta.dataVencimento,
+        data_pagamento: conta.dataPagamento,
+        status: conta.status,
+        categoria: conta.categoria,
+        fornecedor_id: conta.fornecedorId?.toString(),
+        observacoes: conta.observacoes,
+        numero_nota: conta.numeroNota,
+        metodo_pagamento: conta.metodoPagamento,
+        conta_bancaria: conta.contaBancaria,
+        fornecedor: conta.fornecedor ? {
+          id: conta.fornecedor.id.toString(),
+          nome: conta.fornecedor.nome,
+        } : null,
+      },
+    })
+  } catch (error) {
+    console.error('Erro ao buscar conta:', error)
+    return NextResponse.json({ success: false, error: 'Erro ao buscar dados' })
+  }
+}
+
+// PUT /api/contas-pagar/[id] - Atualizar conta
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const { id } = await params
+    const data = await request.json()
+
+    let prisma
+    try {
+      const prismaModule = await import('@/lib/prisma')
+      prisma = prismaModule.default
+    } catch {
+      return NextResponse.json({ success: false, error: 'Banco não configurado' })
+    }
+
+    // Verifica se a conta existe
+    const contaExistente = await prisma.contaPagar.findUnique({
+      where: { id: parseInt(id) },
+    })
+
+    if (!contaExistente) {
+      return NextResponse.json({ success: false, error: 'Conta não encontrada' }, { status: 404 })
+    }
+
+    // Preparar dados para atualização
+    const updateData: Record<string, unknown> = {
+      dataAtualizacao: new Date(),
+    }
+
+    if (data.descricao !== undefined) updateData.descricao = data.descricao
+    if (data.valor !== undefined) updateData.valor = parseFloat(data.valor)
+    if (data.data_vencimento !== undefined) updateData.dataVencimento = new Date(data.data_vencimento)
+    if (data.data_pagamento !== undefined) updateData.dataPagamento = data.data_pagamento ? new Date(data.data_pagamento) : null
+    if (data.status !== undefined) updateData.status = data.status
+    if (data.categoria !== undefined) updateData.categoria = data.categoria || null
+    if (data.fornecedor_id !== undefined) updateData.fornecedorId = data.fornecedor_id ? parseInt(data.fornecedor_id) : null
+    if (data.observacoes !== undefined) updateData.observacoes = data.observacoes || null
+    if (data.numero_nota !== undefined) updateData.numeroNota = data.numero_nota || null
+    if (data.metodo_pagamento !== undefined) updateData.metodoPagamento = data.metodo_pagamento || null
+    if (data.conta_bancaria !== undefined) updateData.contaBancaria = data.conta_bancaria || null
+
+    const contaAtualizada = await prisma.contaPagar.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id: contaAtualizada.id.toString(),
+      },
+      message: 'Conta atualizada com sucesso',
+    })
+  } catch (error) {
+    console.error('Erro ao atualizar conta:', error)
+    return NextResponse.json({ success: false, error: 'Erro ao atualizar conta' })
+  }
+}
+
+// DELETE /api/contas-pagar/[id] - Excluir conta
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    let prisma
+    try {
+      const prismaModule = await import('@/lib/prisma')
+      prisma = prismaModule.default
+    } catch {
+      return NextResponse.json({ success: false, error: 'Banco não configurado' })
+    }
+
+    // Verifica se a conta existe
+    const conta = await prisma.contaPagar.findUnique({
+      where: { id: parseInt(id) },
+    })
+
+    if (!conta) {
+      return NextResponse.json({ success: false, error: 'Conta não encontrada' }, { status: 404 })
+    }
+
+    await prisma.contaPagar.delete({
+      where: { id: parseInt(id) },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Conta excluída com sucesso',
+    })
+  } catch (error) {
+    console.error('Erro ao excluir conta:', error)
+    return NextResponse.json({ success: false, error: 'Erro ao excluir conta' })
+  }
+}

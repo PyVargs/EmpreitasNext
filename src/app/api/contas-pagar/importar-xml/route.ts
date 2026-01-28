@@ -1,0 +1,210 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+// Função para extrair dados do XML de NF-e
+function parseNFeXML(xmlContent: string): {
+  chaveNfe?: string
+  numeroNota?: string
+  serieNota?: string
+  dataEmissao?: Date
+  fornecedor?: {
+    cnpj?: string
+    razaoSocial?: string
+    nomeFantasia?: string
+  }
+  valor?: number
+  valorProdutos?: number
+  valorServicos?: number
+  valorFrete?: number
+  valorDesconto?: number
+  naturezaOperacao?: string
+} | null {
+  try {
+    // Parse simples de XML usando regex (para evitar dependências externas)
+    const getTagValue = (xml: string, tag: string): string | undefined => {
+      const regex = new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, 'i')
+      const match = xml.match(regex)
+      return match ? match[1].trim() : undefined
+    }
+
+    // Buscar informações da NF-e
+    const chaveNfe = getTagValue(xmlContent, 'chNFe') || getTagValue(xmlContent, 'infNFe')?.match(/Id="NFe(\d{44})"/)?.[1]
+    const numeroNota = getTagValue(xmlContent, 'nNF')
+    const serieNota = getTagValue(xmlContent, 'serie')
+    const dataEmissaoStr = getTagValue(xmlContent, 'dhEmi') || getTagValue(xmlContent, 'dEmi')
+    const naturezaOperacao = getTagValue(xmlContent, 'natOp')
+
+    // Dados do emitente (fornecedor)
+    const emitMatch = xmlContent.match(/<emit>([\s\S]*?)<\/emit>/i)
+    const emitXml = emitMatch ? emitMatch[1] : ''
+    const cnpjEmit = getTagValue(emitXml, 'CNPJ')
+    const razaoSocial = getTagValue(emitXml, 'xNome')
+    const nomeFantasia = getTagValue(emitXml, 'xFant')
+
+    // Valores
+    const totalMatch = xmlContent.match(/<total>([\s\S]*?)<\/total>/i)
+    const totalXml = totalMatch ? totalMatch[1] : ''
+    const icmsTotMatch = totalXml.match(/<ICMSTot>([\s\S]*?)<\/ICMSTot>/i)
+    const icmsTotXml = icmsTotMatch ? icmsTotMatch[1] : ''
+
+    const valorNF = getTagValue(icmsTotXml, 'vNF')
+    const valorProd = getTagValue(icmsTotXml, 'vProd')
+    const valorFrete = getTagValue(icmsTotXml, 'vFrete')
+    const valorDesc = getTagValue(icmsTotXml, 'vDesc')
+
+    // Valor de serviços (se houver)
+    const issqnTotMatch = totalXml.match(/<ISSQNtot>([\s\S]*?)<\/ISSQNtot>/i)
+    const issqnTotXml = issqnTotMatch ? issqnTotMatch[1] : ''
+    const valorServ = getTagValue(issqnTotXml, 'vServ')
+
+    return {
+      chaveNfe: chaveNfe?.replace(/[^0-9]/g, ''),
+      numeroNota,
+      serieNota,
+      dataEmissao: dataEmissaoStr ? new Date(dataEmissaoStr) : undefined,
+      fornecedor: {
+        cnpj: cnpjEmit,
+        razaoSocial,
+        nomeFantasia,
+      },
+      valor: valorNF ? parseFloat(valorNF) : undefined,
+      valorProdutos: valorProd ? parseFloat(valorProd) : undefined,
+      valorServicos: valorServ ? parseFloat(valorServ) : undefined,
+      valorFrete: valorFrete ? parseFloat(valorFrete) : undefined,
+      valorDesconto: valorDesc ? parseFloat(valorDesc) : undefined,
+      naturezaOperacao,
+    }
+  } catch (error) {
+    console.error('Erro ao parsear XML:', error)
+    return null
+  }
+}
+
+// POST /api/contas-pagar/importar-xml - Importar XML de NF-e
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    let prisma
+    try {
+      const prismaModule = await import('@/lib/prisma')
+      prisma = prismaModule.default
+    } catch {
+      return NextResponse.json({ success: false, error: 'Banco não configurado' })
+    }
+
+    // Ler o arquivo XML
+    const formData = await req.formData()
+    const xmlFile = formData.get('xml') as File
+    
+    if (!xmlFile) {
+      return NextResponse.json({ success: false, error: 'Arquivo XML não enviado' })
+    }
+
+    const xmlContent = await xmlFile.text()
+    
+    // Parsear o XML
+    const nfeData = parseNFeXML(xmlContent)
+    
+    if (!nfeData) {
+      return NextResponse.json({ success: false, error: 'Não foi possível ler os dados do XML' })
+    }
+
+    if (!nfeData.valor) {
+      return NextResponse.json({ success: false, error: 'Valor da nota não encontrado no XML' })
+    }
+
+    // Verificar se já existe uma conta com essa chave NFe
+    if (nfeData.chaveNfe) {
+      const contaExistente = await prisma.contaPagar.findFirst({
+        where: { chaveNfe: nfeData.chaveNfe },
+      })
+
+      if (contaExistente) {
+        return NextResponse.json({ 
+          success: false, 
+          error: `Nota fiscal já importada anteriormente (Conta #${contaExistente.id})` 
+        })
+      }
+    }
+
+    // Buscar ou criar fornecedor
+    let fornecedorId: number | null = null
+    if (nfeData.fornecedor?.cnpj) {
+      // Formatar CNPJ
+      const cnpjFormatado = nfeData.fornecedor.cnpj.replace(/[^0-9]/g, '')
+      
+      // Buscar fornecedor existente
+      let fornecedor = await prisma.fornecedor.findFirst({
+        where: { cnpjCpf: cnpjFormatado },
+      })
+
+      // Se não existir, criar novo
+      if (!fornecedor && nfeData.fornecedor.razaoSocial) {
+        fornecedor = await prisma.fornecedor.create({
+          data: {
+            nome: nfeData.fornecedor.nomeFantasia || nfeData.fornecedor.razaoSocial,
+            cnpjCpf: cnpjFormatado,
+            ativo: true,
+            dataCriacao: new Date(),
+          },
+        })
+      }
+
+      if (fornecedor) {
+        fornecedorId = fornecedor.id
+      }
+    }
+
+    // Criar a descrição da conta
+    const descricao = nfeData.fornecedor?.razaoSocial 
+      ? `NF ${nfeData.numeroNota || 'S/N'} - ${nfeData.fornecedor.razaoSocial}`
+      : `Nota Fiscal ${nfeData.numeroNota || 'S/N'}`
+
+    // Definir data de vencimento (30 dias após emissão por padrão)
+    const dataVencimento = nfeData.dataEmissao 
+      ? new Date(nfeData.dataEmissao.getTime() + 30 * 24 * 60 * 60 * 1000)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+    // Criar a conta a pagar
+    const novaConta = await prisma.contaPagar.create({
+      data: {
+        descricao,
+        valor: nfeData.valor,
+        dataVencimento,
+        status: 'pendente',
+        categoria: 'Material de Construção', // Categoria padrão
+        fornecedorId,
+        numeroNota: nfeData.numeroNota,
+        serie_nota: nfeData.serieNota,
+        chaveNfe: nfeData.chaveNfe,
+        data_emissao_nota: nfeData.dataEmissao,
+        valor_produtos: nfeData.valorProdutos,
+        valor_servicos: nfeData.valorServicos,
+        valor_frete: nfeData.valorFrete,
+        valor_desconto: nfeData.valorDesconto,
+        natureza_operacao: nfeData.naturezaOperacao,
+        dataCriacao: new Date(),
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: `Nota Fiscal ${nfeData.numeroNota || ''} importada com sucesso!`,
+      data: {
+        id: novaConta.id.toString(),
+        descricao,
+        valor: nfeData.valor,
+        fornecedor: nfeData.fornecedor?.razaoSocial,
+        dataVencimento: dataVencimento.toISOString(),
+      },
+    })
+  } catch (error) {
+    console.error('Erro ao importar XML:', error)
+    return NextResponse.json({ success: false, error: 'Erro ao processar arquivo XML' })
+  }
+}

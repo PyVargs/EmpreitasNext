@@ -1,12 +1,40 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Header } from '@/components/layout/header'
 import { PageHeader } from '@/components/layout/page-header'
 import { DataTable } from '@/components/ui/data-table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +46,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ColumnDef } from '@tanstack/react-table'
 import { formatCurrency, formatDate, statusColors } from '@/lib/constants'
+import { toast } from 'sonner'
 import {
   Plus,
   MoreHorizontal,
@@ -33,30 +62,314 @@ import {
   FileUp,
   Loader2,
   DollarSign,
+  FileText,
+  Receipt,
 } from 'lucide-react'
-import type { ContaPagar, StatusConta } from '@/types'
+import type { ContaPagar, StatusConta, Fornecedor } from '@/types'
+
+const categorias = [
+  'Material de Construção',
+  'Equipamentos',
+  'Combustível',
+  'Manutenção',
+  'Serviços',
+  'Alimentação',
+  'Transporte',
+  'Energia',
+  'Água',
+  'Telefone/Internet',
+  'Aluguel',
+  'Impostos',
+  'Outros',
+]
+
+const metodosPagamento = [
+  'Dinheiro',
+  'PIX',
+  'Transferência',
+  'Boleto',
+  'Cartão de Crédito',
+  'Cartão de Débito',
+  'Cheque',
+]
+
+interface FormData {
+  descricao: string
+  valor: string
+  data_vencimento: string
+  categoria: string
+  fornecedor_id: string
+  observacoes: string
+  metodo_pagamento: string
+  conta_bancaria: string
+  numero_nota: string
+}
+
+const initialFormData: FormData = {
+  descricao: '',
+  valor: '',
+  data_vencimento: '',
+  categoria: '',
+  fornecedor_id: '',
+  observacoes: '',
+  metodo_pagamento: '',
+  conta_bancaria: '',
+  numero_nota: '',
+}
 
 export default function ContasPagarPage() {
   const [contas, setContas] = useState<ContaPagar[]>([])
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<StatusConta | 'todas'>('todas')
+  
+  // Modal states
+  const [modalNovaContaOpen, setModalNovaContaOpen] = useState(false)
+  const [modalEditarOpen, setModalEditarOpen] = useState(false)
+  const [modalImportarOpen, setModalImportarOpen] = useState(false)
+  const [modalDetalhesOpen, setModalDetalhesOpen] = useState(false)
+  const [alertExcluirOpen, setAlertExcluirOpen] = useState(false)
+  const [alertPagarOpen, setAlertPagarOpen] = useState(false)
+  
+  // Form states
+  const [formData, setFormData] = useState<FormData>(initialFormData)
+  const [contaSelecionada, setContaSelecionada] = useState<ContaPagar | null>(null)
+  const [salvando, setSalvando] = useState(false)
+  const [importando, setImportando] = useState(false)
+  
+  // Ref para input de arquivo
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    async function fetchContas() {
-      try {
-        const response = await fetch('/api/contas-pagar')
-        const result = await response.json()
-        if (result.success && result.data) {
-          setContas(result.data)
-        }
-      } catch (error) {
-        console.error('Erro ao buscar contas a pagar:', error)
-      } finally {
-        setLoading(false)
+    fetchContas()
+    fetchFornecedores()
+  }, [])
+
+  async function fetchContas() {
+    try {
+      const response = await fetch('/api/contas-pagar')
+      const result = await response.json()
+      if (result.success && result.data) {
+        setContas(result.data)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar contas a pagar:', error)
+      toast.error('Erro ao carregar contas a pagar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchFornecedores() {
+    try {
+      const response = await fetch('/api/fornecedores')
+      const result = await response.json()
+      if (result.success && result.data) {
+        setFornecedores(result.data)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar fornecedores:', error)
+    }
+  }
+
+  const handleNovaConta = () => {
+    setFormData(initialFormData)
+    setModalNovaContaOpen(true)
+  }
+
+  const handleEditarConta = (conta: ContaPagar) => {
+    setContaSelecionada(conta)
+    setFormData({
+      descricao: conta.descricao,
+      valor: conta.valor.toString(),
+      data_vencimento: conta.data_vencimento?.split('T')[0] || '',
+      categoria: conta.categoria || '',
+      fornecedor_id: conta.fornecedor_id || '',
+      observacoes: conta.observacoes || '',
+      metodo_pagamento: conta.metodo_pagamento || '',
+      conta_bancaria: conta.conta_bancaria || '',
+      numero_nota: conta.numero_nota || '',
+    })
+    setModalEditarOpen(true)
+  }
+
+  const handleVerDetalhes = (conta: ContaPagar) => {
+    setContaSelecionada(conta)
+    setModalDetalhesOpen(true)
+  }
+
+  const handleExcluirClick = (conta: ContaPagar) => {
+    setContaSelecionada(conta)
+    setAlertExcluirOpen(true)
+  }
+
+  const handlePagarClick = (conta: ContaPagar) => {
+    setContaSelecionada(conta)
+    setAlertPagarOpen(true)
+  }
+
+  const handleSalvarNovaConta = async () => {
+    if (!formData.descricao || !formData.valor || !formData.data_vencimento) {
+      toast.error('Preencha os campos obrigatórios')
+      return
+    }
+
+    setSalvando(true)
+    try {
+      const response = await fetch('/api/contas-pagar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          valor: parseFloat(formData.valor.replace(',', '.')),
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success('Conta criada com sucesso!')
+        setModalNovaContaOpen(false)
+        fetchContas()
+      } else {
+        toast.error(result.error || 'Erro ao criar conta')
+      }
+    } catch (error) {
+      console.error('Erro ao criar conta:', error)
+      toast.error('Erro ao criar conta')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const handleSalvarEdicao = async () => {
+    if (!contaSelecionada || !formData.descricao || !formData.valor || !formData.data_vencimento) {
+      toast.error('Preencha os campos obrigatórios')
+      return
+    }
+
+    setSalvando(true)
+    try {
+      const response = await fetch(`/api/contas-pagar/${contaSelecionada.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          valor: parseFloat(formData.valor.replace(',', '.')),
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success('Conta atualizada com sucesso!')
+        setModalEditarOpen(false)
+        fetchContas()
+      } else {
+        toast.error(result.error || 'Erro ao atualizar conta')
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar conta:', error)
+      toast.error('Erro ao atualizar conta')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const handleExcluir = async () => {
+    if (!contaSelecionada) return
+
+    setSalvando(true)
+    try {
+      const response = await fetch(`/api/contas-pagar/${contaSelecionada.id}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success('Conta excluída com sucesso!')
+        setAlertExcluirOpen(false)
+        fetchContas()
+      } else {
+        toast.error(result.error || 'Erro ao excluir conta')
+      }
+    } catch (error) {
+      console.error('Erro ao excluir conta:', error)
+      toast.error('Erro ao excluir conta')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const handleMarcarPago = async () => {
+    if (!contaSelecionada) return
+
+    setSalvando(true)
+    try {
+      const response = await fetch(`/api/contas-pagar/${contaSelecionada.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data_pagamento: new Date().toISOString().split('T')[0],
+          status: 'Pago',
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success('Conta marcada como paga!')
+        setAlertPagarOpen(false)
+        fetchContas()
+      } else {
+        toast.error(result.error || 'Erro ao marcar como pago')
+      }
+    } catch (error) {
+      console.error('Erro ao marcar como pago:', error)
+      toast.error('Erro ao marcar como pago')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const handleImportarXML = () => {
+    setModalImportarOpen(true)
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.toLowerCase().endsWith('.xml')) {
+      toast.error('Por favor, selecione um arquivo XML')
+      return
+    }
+
+    setImportando(true)
+    try {
+      const formData = new FormData()
+      formData.append('xml', file)
+
+      const response = await fetch('/api/contas-pagar/importar-xml', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success(result.message || 'XML importado com sucesso!')
+        setModalImportarOpen(false)
+        fetchContas()
+      } else {
+        toast.error(result.error || 'Erro ao importar XML')
+      }
+    } catch (error) {
+      console.error('Erro ao importar XML:', error)
+      toast.error('Erro ao importar XML')
+    } finally {
+      setImportando(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
       }
     }
-    fetchContas()
-  }, [])
+  }
 
   const filteredContas = contas.filter((c) => {
     if (activeTab === 'todas') return true
@@ -175,22 +488,25 @@ export default function ContasPagarPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Ações</DropdownMenuLabel>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleVerDetalhes(conta)}>
                 <Eye className="mr-2 h-4 w-4" />
                 Ver detalhes
               </DropdownMenuItem>
               {isPendente && (
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePagarClick(conta)}>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Marcar como pago
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEditarConta(conta)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-500 focus:text-red-500">
+              <DropdownMenuItem 
+                onClick={() => handleExcluirClick(conta)}
+                className="text-red-500 focus:text-red-500"
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Excluir
               </DropdownMenuItem>
@@ -200,6 +516,133 @@ export default function ContasPagarPage() {
       },
     },
   ]
+
+  // Form component (reusable for create and edit)
+  const FormularioConta = ({ isEdit = false }: { isEdit?: boolean }) => (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="descricao">Descrição *</Label>
+          <Input
+            id="descricao"
+            placeholder="Descrição da conta"
+            value={formData.descricao}
+            onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="valor">Valor *</Label>
+          <Input
+            id="valor"
+            placeholder="0,00"
+            value={formData.valor}
+            onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="data_vencimento">Data de Vencimento *</Label>
+          <Input
+            id="data_vencimento"
+            type="date"
+            value={formData.data_vencimento}
+            onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="categoria">Categoria</Label>
+          <Select
+            value={formData.categoria}
+            onValueChange={(value) => setFormData({ ...formData, categoria: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {categorias.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="fornecedor">Fornecedor</Label>
+          <Select
+            value={formData.fornecedor_id}
+            onValueChange={(value) => setFormData({ ...formData, fornecedor_id: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {fornecedores.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="metodo_pagamento">Método de Pagamento</Label>
+          <Select
+            value={formData.metodo_pagamento}
+            onValueChange={(value) => setFormData({ ...formData, metodo_pagamento: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {metodosPagamento.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="numero_nota">Número da Nota</Label>
+          <Input
+            id="numero_nota"
+            placeholder="Ex: 12345"
+            value={formData.numero_nota}
+            onChange={(e) => setFormData({ ...formData, numero_nota: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="conta_bancaria">Conta Bancária</Label>
+          <Input
+            id="conta_bancaria"
+            placeholder="Ex: Banco do Brasil"
+            value={formData.conta_bancaria}
+            onChange={(e) => setFormData({ ...formData, conta_bancaria: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="observacoes">Observações</Label>
+        <Textarea
+          id="observacoes"
+          placeholder="Observações adicionais..."
+          value={formData.observacoes}
+          onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+          rows={3}
+        />
+      </div>
+    </div>
+  )
 
   return (
     <>
@@ -265,11 +708,14 @@ export default function ContasPagarPage() {
           title="Contas a Pagar"
           description={`${contas.length} conta(s) cadastrada(s)`}
         >
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleImportarXML}>
             <FileUp className="mr-2 h-4 w-4" />
             Importar XML
           </Button>
-          <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+          <Button 
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+            onClick={handleNovaConta}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Nova Conta
           </Button>
@@ -306,6 +752,271 @@ export default function ContasPagarPage() {
           />
         )}
       </div>
+
+      {/* Modal Nova Conta */}
+      <Dialog open={modalNovaContaOpen} onOpenChange={setModalNovaContaOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Nova Conta a Pagar
+            </DialogTitle>
+            <DialogDescription>
+              Cadastre uma nova conta a pagar no sistema
+            </DialogDescription>
+          </DialogHeader>
+          <FormularioConta />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalNovaContaOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvarNovaConta} disabled={salvando}>
+              {salvando ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Conta */}
+      <Dialog open={modalEditarOpen} onOpenChange={setModalEditarOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Editar Conta
+            </DialogTitle>
+            <DialogDescription>
+              Atualize as informações da conta
+            </DialogDescription>
+          </DialogHeader>
+          <FormularioConta isEdit />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalEditarOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvarEdicao} disabled={salvando}>
+              {salvando ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Alterações'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Importar XML */}
+      <Dialog open={modalImportarOpen} onOpenChange={setModalImportarOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileUp className="h-5 w-5" />
+              Importar XML de NF-e
+            </DialogTitle>
+            <DialogDescription>
+              Selecione um arquivo XML de Nota Fiscal Eletrônica para importar automaticamente os dados da conta
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-6">
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Arraste o arquivo XML aqui ou clique para selecionar
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xml"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="xml-upload"
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importando}
+              >
+                {importando ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Selecionar Arquivo
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              ℹ️ O sistema irá extrair automaticamente: fornecedor, valor, data de emissão, número da nota e outros dados da NF-e.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalImportarOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Detalhes */}
+      <Dialog open={modalDetalhesOpen} onOpenChange={setModalDetalhesOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Detalhes da Conta
+            </DialogTitle>
+          </DialogHeader>
+          {contaSelecionada && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Descrição</Label>
+                  <p className="font-medium">{contaSelecionada.descricao}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Valor</Label>
+                  <p className="font-semibold text-lg">{formatCurrency(contaSelecionada.valor)}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs">Vencimento</Label>
+                  <p>{formatDate(contaSelecionada.data_vencimento)}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs">Status</Label>
+                  <Badge variant="secondary" className={statusColors[contaSelecionada.status]}>
+                    {contaSelecionada.status}
+                  </Badge>
+                </div>
+              </div>
+
+              {contaSelecionada.fornecedor && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Fornecedor</Label>
+                  <p>{contaSelecionada.fornecedor.nome}</p>
+                </div>
+              )}
+
+              {contaSelecionada.categoria && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Categoria</Label>
+                  <p>{contaSelecionada.categoria}</p>
+                </div>
+              )}
+
+              {contaSelecionada.numero_nota && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Número da Nota</Label>
+                  <p>{contaSelecionada.numero_nota}</p>
+                </div>
+              )}
+
+              {contaSelecionada.metodo_pagamento && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Método de Pagamento</Label>
+                  <p>{contaSelecionada.metodo_pagamento}</p>
+                </div>
+              )}
+
+              {contaSelecionada.data_pagamento && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Data do Pagamento</Label>
+                  <p>{formatDate(contaSelecionada.data_pagamento)}</p>
+                </div>
+              )}
+
+              {contaSelecionada.observacoes && (
+                <div>
+                  <Label className="text-muted-foreground text-xs">Observações</Label>
+                  <p className="text-sm">{contaSelecionada.observacoes}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalDetalhesOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Alert Excluir */}
+      <AlertDialog open={alertExcluirOpen} onOpenChange={setAlertExcluirOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Conta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a conta "{contaSelecionada?.descricao}"? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleExcluir}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {salvando ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alert Marcar como Pago */}
+      <AlertDialog open={alertPagarOpen} onOpenChange={setAlertPagarOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar como Pago</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirma o pagamento da conta "{contaSelecionada?.descricao}" 
+              no valor de {formatCurrency(contaSelecionada?.valor || 0)}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMarcarPago}
+              className="bg-emerald-500 hover:bg-emerald-600"
+            >
+              {salvando ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Confirmar Pagamento
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
