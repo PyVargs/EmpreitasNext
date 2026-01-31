@@ -1,0 +1,33 @@
+# ============================================
+# Docker Compose - Aplicação EmpreitasNext
+# Rodar na VPS junto com o banco de dados
+# ============================================
+
+services:
+  empreitas-app:
+    image: ghcr.io/pyvargs/empreitasnext:latest
+    container_name: empreitas-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+    depends_on:
+      empreitas-db:
+        condition: service_healthy
+    networks:
+      - empreitas-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  empreitas-network:
+    name: empreitas-network
+    external: true

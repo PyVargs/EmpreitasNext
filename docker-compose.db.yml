@@ -1,0 +1,37 @@
+# ============================================
+# Docker Compose - PostgreSQL Database
+# Rodar separadamente para persistência
+# ============================================
+
+services:
+  empreitas-db:
+    image: postgres:16-alpine
+    container_name: empreitas-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-empreitas}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-empreitas_secret_2024}
+      - POSTGRES_DB=${POSTGRES_DB:-empreitas_db}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - empreitas-pgdata:/var/lib/postgresql/data
+    networks:
+      - empreitas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-empreitas} -d ${POSTGRES_DB:-empreitas_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  empreitas-pgdata:
+    name: empreitas-pgdata
+    driver: local
+
+networks:
+  empreitas-network:
+    name: empreitas-network
+    driver: bridge
