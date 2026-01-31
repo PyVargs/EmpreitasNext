@@ -26,7 +26,7 @@ export async function POST(
     }
 
     // Verificar se parcela existe
-    const parcela = await prisma.parcelaContrato.findUnique({
+    const parcela = await prisma.parcela.findUnique({
       where: { id: parseInt(id) },
     })
 
@@ -35,7 +35,7 @@ export async function POST(
     }
 
     // Atualizar parcela
-    const parcelaAtualizada = await prisma.parcelaContrato.update({
+    const parcelaAtualizada = await prisma.parcela.update({
       where: { id: parseInt(id) },
       data: {
         status: 'pago',
