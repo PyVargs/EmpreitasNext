@@ -1,12 +1,13 @@
 # ============================================
 # Docker Compose - Aplicação EmpreitasNext
-# Rodar na VPS junto com o banco de dados
+# Deploy: docker compose up -d
+# Update: docker service update --image ghcr.io/pyvargs/empreitasnext/backend:latest empreitas_app --with-registry-auth
 # ============================================
 
 services:
-  empreitas-app:
-    image: ghcr.io/pyvargs/empreitasnext:latest
-    container_name: empreitas-app
+  empreitas_app:
+    image: ghcr.io/pyvargs/empreitasnext/backend:latest
+    container_name: empreitas_app
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -15,9 +16,6 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-    depends_on:
-      empreitas-db:
-        condition: service_healthy
     networks:
       - empreitas-network
     healthcheck:
@@ -26,8 +24,36 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    depends_on:
+      - empreitas_db
+
+  empreitas_db:
+    image: postgres:16-alpine
+    container_name: empreitas_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-empreitas2}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-5McrHGYv41g9reYuZjrT783bcRoPNAHv}
+      - POSTGRES_DB=${POSTGRES_DB:-database_4tpr}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - empreitas-pgdata:/var/lib/postgresql/data
+    networks:
+      - empreitas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-empreitas2} -d ${POSTGRES_DB:-database_4tpr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  empreitas-pgdata:
+    name: empreitas-pgdata
+    driver: local
 
 networks:
   empreitas-network:
-    name: empreitas-network
     external: true
